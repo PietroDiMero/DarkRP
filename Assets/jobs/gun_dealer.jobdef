@@ -3,7 +3,7 @@
   "Description": "Black-market supplier who starts armed enough to protect stock and territory.",
   "Category": "Commerce",
   "AccentColor": "0.9882,0.6431,0.2863,1",
-  "Salary": 70,
+  "Salary": 80,
   "MaxPlayers": 3,
   "Command": "/gundealer",
   "Order": 60,

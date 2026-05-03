@@ -3,7 +3,7 @@
   "Description": "Frontline police role focused on patrols, arrests, and street control.",
   "Category": "Government",
   "AccentColor": "0.3373,0.7176,0.9765,1",
-  "Salary": 65,
+  "Salary": 85,
   "MaxPlayers": 8,
   "Command": "/cp",
   "Order": 10,

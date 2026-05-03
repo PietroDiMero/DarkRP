@@ -3,7 +3,7 @@
   "Description": "Low-level criminal role built for street crime and supporting organized crews.",
   "Category": "Criminal",
   "AccentColor": "0.84265,0.39459,0.88372,1",
-  "Salary": 55,
+  "Salary": 70,
   "MaxPlayers": 8,
   "Command": "/gangster",
   "Order": 40,

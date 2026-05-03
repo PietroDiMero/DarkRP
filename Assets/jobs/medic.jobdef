@@ -3,7 +3,7 @@
   "Description": "Support role meant to stabilize injured players and move through active scenes safely.",
   "Category": "Services",
   "AccentColor": "0.3882,0.902,0.7451,1",
-  "Salary": 60,
+  "Salary": 80,
   "MaxPlayers": 3,
   "Command": "/medic",
   "Order": 70,

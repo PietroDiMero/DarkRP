@@ -3,7 +3,7 @@
   "Description": "Break into locked homes and slip out before the law arrives.",
   "Category": "Criminal",
   "AccentColor": "0.9059,0.3569,0.3569,1",
-  "Salary": 60,
+  "Salary": 75,
   "MaxPlayers": 6,
   "Command": "/thief",
   "Order": 45,

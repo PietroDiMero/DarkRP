@@ -3,7 +3,7 @@
   "Description": "Food service role focused on utility, survival, and civilian support.",
   "Category": "Services",
   "AccentColor": "0.9843,0.7451,0.3098,1",
-  "Salary": 40,
+  "Salary": 55,
   "MaxPlayers": 3,
   "Command": "/cook",
   "Order": 80,
