@@ -22,15 +22,20 @@ public static class WeaponShopCatalog
 
 	static readonly WeaponShopItemDefinition[] Items =
 	[
-		new( "weapons/crowbar/crowbar.prefab", "Crowbar", 250, "A cheap melee option that hits hard at point-blank range." ),
-		new( "weapons/glock/glock.prefab", "USP", 600, "A dependable sidearm for cheap, accurate close-range fights." ),
-		new( "weapons/colt1911/colt1911.prefab", "1911", 750, "A heavier pistol with stronger shots and a smaller magazine." ),
-		new( "weapons/grenade/grenade.prefab", "Grenade", 900, "A thrown explosive for flushing players out of tight positions.", true ),
-		new( "weapons/mp5/mp5.prefab", "SMG", 1600, "A fast-firing SMG built for aggressive short-range pressure.", true ),
-		new( "weapons/shotgun/shotgun.prefab", "Shotgun", 2100, "A close-quarters weapon that deals massive damage up close.", true ),
-		new( "weapons/m4a1/m4a1.prefab", "M4A1", 2600, "A balanced assault rifle that stays effective in most fights.", true ),
-		new( "weapons/sniper/sniper.prefab", "Sniper", 3200, "A high-damage rifle made for long-range picks and hold angles.", true ),
-		new( "weapons/rpg/rpg.prefab", "Rocket Launcher", 10000, "A heavy launcher for expensive, high-impact explosive pressure.", true )
+		// Armes accessibles à tous
+		new( "weapons/crowbar/crowbar.prefab",     "Crowbar",         150,   "Une arme de mêlée basique. Bon marché et efficace au corps à corps." ),
+		new( "weapons/glock/glock.prefab",         "USP",             700,   "Un pistolet fiable pour les altercations rapprochées." ),
+		new( "weapons/colt1911/colt1911.prefab",   "1911",            900,   "Un pistolet plus puissant mais avec un chargeur réduit." ),
+
+		// Armes moyennes — Gun Dealer uniquement
+		new( "weapons/grenade/grenade.prefab",     "Grenade",         1500,  "Explosive à lancer pour déloger des joueurs retranchés.", true ),
+		new( "weapons/mp5/mp5.prefab",             "SMG",             2200,  "Mitraillette efficace à courte portée.", true ),
+		new( "weapons/shotgun/shotgun.prefab",     "Shotgun",         3000,  "Dévastatrice à bout portant.", true ),
+
+		// Armes lourdes — Gun Dealer uniquement, investissement sérieux
+		new( "weapons/m4a1/m4a1.prefab",           "M4A1",            5000,  "Fusil d'assaut équilibré, efficace dans la plupart des situations.", true ),
+		new( "weapons/sniper/sniper.prefab",       "Sniper",          8000,  "Fusil de précision haute portée. Rare et cher.", true ),
+		new( "weapons/rpg/rpg.prefab",             "Rocket Launcher", 20000, "Lance-roquettes. Extrêmement coûteux et dangereux.", true )
 	];
 
 	public static IReadOnlyList<WeaponShopItemDefinition> GetAll()

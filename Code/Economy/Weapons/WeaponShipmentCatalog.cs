@@ -22,13 +22,18 @@ public static class WeaponShipmentCatalog
 {
 	static readonly WeaponShipmentItemDefinition[] Items =
 	[
-		new( "weapons/glock/glock.prefab", "USP Shipment", 4800, "A crate with 10 USP pistols for resale.", 10, true ),
-		new( "weapons/colt1911/colt1911.prefab", "1911 Shipment", 6000, "A crate with 10 Colt 1911 pistols for resale.", 10, true ),
-		new( "weapons/mp5/mp5.prefab", "SMG Shipment", 12800, "A crate with 10 SMGs ready to distribute.", 10, true ),
-		new( "weapons/shotgun/shotgun.prefab", "Shotgun Shipment", 16800, "A crate with 10 shotguns for close-range muscle.", 10, true ),
-		new( "weapons/m4a1/m4a1.prefab", "M4A1 Shipment", 20800, "A crate with 10 M4A1 rifles for heavier loadouts.", 10, true ),
-		new( "weapons/sniper/sniper.prefab", "Sniper Shipment", 25600, "A crate with 10 sniper rifles for long sightlines.", 10, true ),
-		new( "weapons/rpg/rpg.prefab", "Rocket Launcher Shipment", 80000, "A crate with 10 rocket launchers for high-end weapon dealing.", 10, true )
+		// Caisses légères
+		new( "weapons/glock/glock.prefab",     "Caisse USP",     5500,  "Une caisse de 10 pistolets USP à revendre.", 10, true ),
+		new( "weapons/colt1911/colt1911.prefab","Caisse 1911",   7000,  "Une caisse de 10 Colt 1911 à revendre.", 10, true ),
+
+		// Caisses moyennes
+		new( "weapons/mp5/mp5.prefab",         "Caisse SMG",    16000, "Une caisse de 10 SMGs.", 10, true ),
+		new( "weapons/shotgun/shotgun.prefab",  "Caisse Shotgun",22000, "Une caisse de 10 shotguns.", 10, true ),
+
+		// Caisses lourdes
+		new( "weapons/m4a1/m4a1.prefab",       "Caisse M4A1",   38000, "Une caisse de 10 M4A1.", 10, true ),
+		new( "weapons/sniper/sniper.prefab",    "Caisse Sniper", 60000, "Une caisse de 10 snipers.", 10, true ),
+		new( "weapons/rpg/rpg.prefab",          "Caisse RPG",   150000, "Une caisse de 10 lance-roquettes. Extrêmement rare.", 10, true )
 	];
 
 	public static IReadOnlyList<WeaponShipmentItemDefinition> GetAll()

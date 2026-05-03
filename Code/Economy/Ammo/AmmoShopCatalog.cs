@@ -20,10 +20,10 @@ public static class AmmoShopCatalog
 {
 	static readonly AmmoShopItemDefinition[] Items =
 	[
-		new( "entities/pickup/ammo_9mm.prefab", "Pistol Ammo", 250, "A 30-round pistol ammo pack." ),
-		new( "entities/pickup/ammo_rifle.prefab", "Rifle Ammo", 450, "A 60-round rifle ammo pack." ),
-		new( "entities/pickup/ammo_shotgun.prefab", "Shotgun Ammo", 400, "An 18-shell shotgun ammo pack." ),
-		new( "entities/pickup/ammo_rocket.prefab", "Rockets", 1800, "Two rockets for the rocket launcher.", true )
+		new( "entities/pickup/ammo_9mm.prefab",    "Munitions Pistolet", 200,  "Pack de 30 balles pour pistolet." ),
+		new( "entities/pickup/ammo_rifle.prefab",  "Munitions Fusil",    400,  "Pack de 60 balles pour fusil." ),
+		new( "entities/pickup/ammo_shotgun.prefab","Munitions Shotgun",  350,  "Pack de 18 cartouches pour shotgun." ),
+		new( "entities/pickup/ammo_rocket.prefab", "Roquettes",          3000, "Deux roquettes pour lance-roquettes.", true )
 	];
 
 	public static IReadOnlyList<AmmoShopItemDefinition> GetAll()
