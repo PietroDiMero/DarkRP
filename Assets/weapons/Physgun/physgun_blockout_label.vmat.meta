@@ -1,0 +1,23 @@
+{
+  "publish": {
+    "Enabled": false,
+    "ProjectConfig": {
+      "Title": "Physgun Blockout Label",
+      "Type": "material",
+      "Org": "local",
+      "Ident": "physgunblockoutlabel",
+      "Schema": 0,
+      "IncludeSourceFiles": false,
+      "Resources": null,
+      "PackageReferences": null,
+      "EditorReferences": [
+        "fish.medkit#12819"
+      ],
+      "Mounts": null,
+      "IsStandaloneOnly": false,
+      "Metadata": {
+        "SingleAssetSource": "weapons/physgun/physgun_blockout_label.vmat"
+      }
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "publish": {
+    "Enabled": false,
+    "ProjectConfig": {
+      "Title": "Beam Success",
+      "Type": "material",
+      "Org": "local",
+      "Ident": "beamsuccess",
+      "Schema": 0,
+      "IncludeSourceFiles": false,
+      "Resources": null,
+      "PackageReferences": null,
+      "EditorReferences": [
+        "fish.medkit#12819"
+      ],
+      "Mounts": null,
+      "IsStandaloneOnly": false,
+      "Metadata": {
+        "SingleAssetSource": "weapons/toolgun/effects/beam-success.vmat"
+      }
+    }
+  }
+}

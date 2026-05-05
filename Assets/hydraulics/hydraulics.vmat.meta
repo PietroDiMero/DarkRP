@@ -1,0 +1,23 @@
+{
+  "publish": {
+    "Enabled": false,
+    "ProjectConfig": {
+      "Title": "Hydraulics",
+      "Type": "material",
+      "Org": "local",
+      "Ident": "hydraulics",
+      "Schema": 0,
+      "IncludeSourceFiles": false,
+      "Resources": null,
+      "PackageReferences": null,
+      "EditorReferences": [
+        "fish.medkit#12819"
+      ],
+      "Mounts": null,
+      "IsStandaloneOnly": false,
+      "Metadata": {
+        "SingleAssetSource": "hydraulics/hydraulics.vmat"
+      }
+    }
+  }
+}

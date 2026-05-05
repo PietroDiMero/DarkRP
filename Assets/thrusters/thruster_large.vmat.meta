@@ -1,0 +1,23 @@
+{
+  "publish": {
+    "Enabled": false,
+    "ProjectConfig": {
+      "Title": "Thruster Large",
+      "Type": "material",
+      "Org": "local",
+      "Ident": "thrusterlarge",
+      "Schema": 0,
+      "IncludeSourceFiles": false,
+      "Resources": null,
+      "PackageReferences": null,
+      "EditorReferences": [
+        "fish.medkit#12819"
+      ],
+      "Mounts": null,
+      "IsStandaloneOnly": false,
+      "Metadata": {
+        "SingleAssetSource": "thrusters/thruster_large.vmat"
+      }
+    }
+  }
+}

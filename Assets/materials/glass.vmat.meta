@@ -10,7 +10,9 @@
       "IncludeSourceFiles": false,
       "Resources": null,
       "PackageReferences": null,
-      "EditorReferences": null,
+      "EditorReferences": [
+        "facepunch.glass_c#111270"
+      ],
       "Mounts": null,
       "IsStandaloneOnly": false,
       "Metadata": {

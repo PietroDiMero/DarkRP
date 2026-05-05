@@ -1,0 +1,23 @@
+{
+  "publish": {
+    "Enabled": false,
+    "ProjectConfig": {
+      "Title": "Tv Crt Screen",
+      "Type": "material",
+      "Org": "local",
+      "Ident": "tvcrtscreen",
+      "Schema": 0,
+      "IncludeSourceFiles": false,
+      "Resources": null,
+      "PackageReferences": null,
+      "EditorReferences": [
+        "facepunch.glass_c#111270"
+      ],
+      "Mounts": null,
+      "IsStandaloneOnly": false,
+      "Metadata": {
+        "SingleAssetSource": "entities/sents/tv/materials/tv_crt_screen.vmat"
+      }
+    }
+  }
+}

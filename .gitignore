@@ -17,7 +17,7 @@ code/Properties/*
 *.generated.*
 *.*_c
 !*.shader_c
-!*.scene_c
+!Assets/**/*_c
 *.los
 *.vpk
 *launchSettings.json

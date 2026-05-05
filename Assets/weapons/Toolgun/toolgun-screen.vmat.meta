@@ -1,0 +1,23 @@
+{
+  "publish": {
+    "Enabled": false,
+    "ProjectConfig": {
+      "Title": "Toolgun Screen",
+      "Type": "material",
+      "Org": "local",
+      "Ident": "toolgunscreen",
+      "Schema": 0,
+      "IncludeSourceFiles": false,
+      "Resources": null,
+      "PackageReferences": null,
+      "EditorReferences": [
+        "facepunch.glass_c#111270"
+      ],
+      "Mounts": null,
+      "IsStandaloneOnly": false,
+      "Metadata": {
+        "SingleAssetSource": "weapons/toolgun/toolgun-screen.vmat"
+      }
+    }
+  }
+}
