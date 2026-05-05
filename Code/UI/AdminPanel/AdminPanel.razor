@@ -1,12 +1,11 @@
-@using Sandbox;
+@namespace Sandbox
 @using Sandbox.UI;
 @inherits PanelComponent
-@namespace Sandbox
 
 <root>
 @if ( _open )
 {
-	<div class="ap-backdrop" @onclick="@(() => { _open = false; StateHasChanged(); })" />
+	<div class="ap-backdrop" @onclick="@ClosePanel" />
 
 	<div class="ap-window">
 
@@ -16,27 +15,27 @@
 				<label class="ap-title">Panneau Administration</label>
 				<label class="ap-role-badge ap-role-@_myRole.ToString().ToLower()">@_myRole.GetLabel()</label>
 			</div>
-			<Button Icon="refresh"  class="ap-icon-btn" @onclick="@Refresh" />
-			<Button Icon="close"    class="ap-icon-btn ap-close" @onclick="@(() => { _open = false; StateHasChanged(); })" />
+			<Button Icon="refresh" class="ap-icon-btn" @onclick="@Refresh" />
+			<Button Icon="close"   class="ap-icon-btn ap-close" @onclick="@ClosePanel" />
 		</div>
 
 		<!-- ── Onglets ─────────────────────────────────────── -->
 		<div class="ap-tabs">
 			<div class="ap-tab @(_tab == Tab.Players ? "active" : "")"
-			     @onclick="@(() => { _tab = Tab.Players; StateHasChanged(); })">
+			     @onclick="@(() => SelectTab( Tab.Players ))">
 				<label>Joueurs (@_onlinePlayers.Count)</label>
 			</div>
 
 			@if ( _myRole.CanAdmin() )
 			{
 				<div class="ap-tab @(_tab == Tab.Bans ? "active" : "")"
-				     @onclick="@(() => { _tab = Tab.Bans; StateHasChanged(); })">
+				     @onclick="@(() => SelectTab( Tab.Bans ))">
 					<label>Bans (@_activeBans.Count)</label>
 				</div>
 			}
 
 			<div class="ap-tab @(_tab == Tab.Logs ? "active" : "")"
-			     @onclick="@(() => { _tab = Tab.Logs; StateHasChanged(); })">
+			     @onclick="@(() => SelectTab( Tab.Logs ))">
 				<label>Logs</label>
 			</div>
 		</div>
@@ -44,12 +43,11 @@
 		<!-- ── Contenu ─────────────────────────────────────── -->
 		<div class="ap-body">
 
-			@* ══════════════════════════════════════════════════
+			@* ══════════════════════════════════════════════
 			   ONGLET : JOUEURS
-			   ══════════════════════════════════════════════════ *@
+			   ══════════════════════════════════════════════ *@
 			@if ( _tab == Tab.Players )
 			{
-				<!-- Barre de recherche -->
 				<div class="ap-search-row">
 					<TabTextEntry class="ap-input ap-search-input"
 					              Placeholder="Rechercher un joueur…"
@@ -72,12 +70,10 @@
 				@foreach ( var p in filtered )
 				{
 					var isSelected = _selected == p.SteamId;
-					var isLocalAdmin = p.SteamId == (long)(Connection.Local?.SteamId.Value ?? 0);
+					var isSelf     = p.SteamId == (Connection.Local != null ? (long)Connection.Local.SteamId.Value : 0L);
 
 					<div class="ap-player-row @(isSelected ? "selected" : "")"
-					     @onclick="@(() => { _selected = isSelected ? 0 : p.SteamId; StateHasChanged(); })">
-
-						<!-- Infos joueur -->
+					     @onclick="@(() => TogglePlayer( p.SteamId ))">
 						<div class="ap-player-info">
 							<label class="ap-player-name">@p.DisplayName</label>
 							@if ( p.IsHost )
@@ -86,16 +82,13 @@
 							}
 							<label class="ap-badge ap-role-@p.Role.ToString().ToLower()">@p.Role.GetLabel()</label>
 						</div>
-
 						<label class="ap-player-id">@p.SteamId</label>
 					</div>
 
-					@* Panel d'actions affiché uniquement pour le joueur sélectionné *@
-					@if ( isSelected && !isLocalAdmin )
+					@if ( isSelected && !isSelf )
 					{
 						<div class="ap-actions-panel">
 
-							<!-- Kick -->
 							@if ( _myRole.CanModerate() )
 							{
 								<div class="ap-action-row">
@@ -103,14 +96,12 @@
 									<TabTextEntry class="ap-input ap-reason-input"
 									              Placeholder="Raison du kick…"
 									              Value:bind=@_kickReason />
-									<Button Text="Kick"
-									        Icon="logout"
+									<Button Text="Kick" Icon="logout"
 									        class="ap-btn ap-btn-warn"
 									        @onclick="@(() => DoKick( p.SteamId ))" />
 								</div>
 							}
 
-							<!-- Ban -->
 							@if ( _myRole.CanTempBan() )
 							{
 								<div class="ap-action-row">
@@ -121,15 +112,12 @@
 									<TabTextEntry class="ap-input ap-duration-input"
 									              Placeholder="Durée (min, 0=perm)"
 									              Value:bind=@_banDuration />
-									<Button Text="Bannir"
-									        Icon="gavel"
+									<Button Text="Bannir" Icon="gavel"
 									        class="ap-btn ap-btn-danger"
-									        Disabled="@( _myRole == StaffRole.Support )"
 									        @onclick="@(() => DoBan( p.SteamId ))" />
 								</div>
 							}
 
-							<!-- Argent -->
 							@if ( _myRole.CanAdmin() )
 							{
 								<div class="ap-action-row">
@@ -137,15 +125,13 @@
 									<TabTextEntry class="ap-input ap-money-input"
 									              Placeholder="Montant ($)"
 									              Value:bind=@_moneyAmount />
-									<Button Text="Définir"
-									        Icon="payments"
+									<Button Text="Définir" Icon="payments"
 									        class="ap-btn ap-btn-info"
 									        @onclick="@(() => DoSetMoney( p.SteamId ))" />
 								</div>
 
-								<!-- Job -->
 								<div class="ap-action-section">
-									<label class="ap-action-label">Changer de job</label>
+									<label class="ap-action-label">Job</label>
 									<div class="ap-job-grid">
 									@foreach ( var job in JobDefinition.GetAll() )
 									{
@@ -156,28 +142,25 @@
 									</div>
 								</div>
 
-								<!-- Rôle -->
 								<div class="ap-action-section">
-									<label class="ap-action-label">Rôle staff</label>
+									<label class="ap-action-label">Rôle</label>
 									<div class="ap-role-grid">
 										<Button Text="Player"     class="ap-btn ap-btn-role" @onclick="@(() => DoSetRole( p.SteamId, StaffRole.Player ))" />
 										<Button Text="Support"    class="ap-btn ap-btn-role" @onclick="@(() => DoSetRole( p.SteamId, StaffRole.Support ))" />
 										<Button Text="Modérateur" class="ap-btn ap-btn-role" @onclick="@(() => DoSetRole( p.SteamId, StaffRole.Moderator ))" />
 										<Button Text="SuperModo"  class="ap-btn ap-btn-role" @onclick="@(() => DoSetRole( p.SteamId, StaffRole.SuperModerator ))" />
-
 										@if ( _myRole.IsFounder() )
 										{
-											<Button Text="Admin"    class="ap-btn ap-btn-role ap-btn-danger" @onclick="@(() => DoSetRole( p.SteamId, StaffRole.Admin ))" />
+											<Button Text="Admin"     class="ap-btn ap-btn-role ap-btn-danger" @onclick="@(() => DoSetRole( p.SteamId, StaffRole.Admin ))" />
 											<Button Text="Fondateur" class="ap-btn ap-btn-role ap-btn-danger" @onclick="@(() => DoSetRole( p.SteamId, StaffRole.Founder ))" />
 										}
 									</div>
 								</div>
 
-								<!-- VIP -->
 								<div class="ap-action-row">
 									<label class="ap-action-label">VIP</label>
-									<Button Text="Activer VIP"   Icon="star"      class="ap-btn ap-btn-vip"    @onclick="@(() => DoGiveVip( p.SteamId, true ))" />
-									<Button Text="Retirer VIP"   Icon="star_border" class="ap-btn ap-btn-warn" @onclick="@(() => DoGiveVip( p.SteamId, false ))" />
+									<Button Text="Activer"   Icon="star"        class="ap-btn ap-btn-vip"  @onclick="@(() => DoGiveVip( p.SteamId, true ))" />
+									<Button Text="Retirer"   Icon="star_border"  class="ap-btn ap-btn-warn" @onclick="@(() => DoGiveVip( p.SteamId, false ))" />
 								</div>
 							}
 
@@ -187,9 +170,9 @@
 				</div>
 			}
 
-			@* ══════════════════════════════════════════════════
+			@* ══════════════════════════════════════════════
 			   ONGLET : BANS
-			   ══════════════════════════════════════════════════ *@
+			   ══════════════════════════════════════════════ *@
 			@if ( _tab == Tab.Bans && _myRole.CanAdmin() )
 			{
 				@if ( _activeBans.Count == 0 )
@@ -206,17 +189,15 @@
 							<label class="ap-ban-col ap-ban-col-expire">Expire</label>
 							<label class="ap-ban-col ap-ban-col-action"></label>
 						</div>
-
 						@foreach ( var ban in _activeBans )
 						{
 							<div class="ap-ban-row">
 								<label class="ap-ban-col ap-ban-col-name">@ban.DisplayName</label>
 								<label class="ap-ban-col ap-ban-col-reason">@ban.Reason</label>
 								<label class="ap-ban-col ap-ban-col-admin">@(ban.AdminName ?? "Système")</label>
-								<label class="ap-ban-col ap-ban-col-expire">@(ban.ExpiresAt.HasValue ? ban.ExpiresAt.Value.ToString("dd/MM/yy HH:mm") : "Permanent")</label>
+								<label class="ap-ban-col ap-ban-col-expire">@(ban.ExpiresAt.HasValue ? ban.ExpiresAt.Value.ToString("dd/MM HH:mm") : "Permanent")</label>
 								<div class="ap-ban-col ap-ban-col-action">
-									<Button Text="Débannir"
-									        Icon="lock_open"
+									<Button Text="Débannir" Icon="lock_open"
 									        class="ap-btn ap-btn-info"
 									        @onclick="@(() => DoUnban( ban.Id ))" />
 								</div>
@@ -226,9 +207,9 @@
 				}
 			}
 
-			@* ══════════════════════════════════════════════════
+			@* ══════════════════════════════════════════════
 			   ONGLET : LOGS
-			   ══════════════════════════════════════════════════ *@
+			   ══════════════════════════════════════════════ *@
 			@if ( _tab == Tab.Logs )
 			{
 				@if ( _recentLogs.Count == 0 )
@@ -245,13 +226,12 @@
 							<label class="ap-log-col ap-log-col-target">Cible</label>
 							<label class="ap-log-col ap-log-col-details">Détails</label>
 						</div>
-
-						@foreach ( var log in _recentLogs.AsEnumerable().Reverse() )
+						@foreach ( var log in Enumerable.Reverse( _recentLogs ) )
 						{
 							<div class="ap-log-row">
 								<label class="ap-log-col ap-log-col-time">@log.CreatedAt.ToString("HH:mm:ss")</label>
 								<label class="ap-log-col ap-log-col-admin">@log.AdminName</label>
-								<label class="ap-log-col ap-log-col-action ap-action-@log.Action.ToLower()">@log.Action</label>
+								<label class="ap-log-col ap-log-col-action">@log.Action</label>
 								<label class="ap-log-col ap-log-col-target">@log.TargetName</label>
 								<label class="ap-log-col ap-log-col-details">@log.Details</label>
 							</div>
@@ -260,8 +240,8 @@
 				}
 			}
 
-		</div><!-- fin ap-body -->
-	</div><!-- fin ap-window -->
+		</div>
+	</div>
 }
 </root>
 
@@ -270,10 +250,9 @@
 	protected override int BuildHash()
 	{
 		if ( !_open ) return 0;
-
 		var h = new System.HashCode();
 		h.Add( _open );
-		h.Add( _tab );
+		h.Add( (int)_tab );
 		h.Add( _selected );
 		h.Add( _revision );
 		h.Add( _search );

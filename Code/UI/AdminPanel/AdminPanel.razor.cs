@@ -56,11 +56,27 @@ public partial class AdminPanel : PanelComponent
 		} );
 	}
 
+	// ── Navigation ──────────────────────────────────────────────────────
+	void ClosePanel()
+	{
+		_open = false;
+		StateHasChanged();
+	}
+
+	void SelectTab( Tab tab )
+	{
+		_tab = tab;
+		StateHasChanged();
+	}
+
+	void TogglePlayer( long steamId )
+	{
+		_selected = _selected == steamId ? 0 : steamId;
+		StateHasChanged();
+	}
+
 	void TogglePanel()
 	{
-		var local = Player.FindLocalPlayer();
-		if ( local is null ) return;
-
 		var myConn = Connection.Local;
 		if ( myConn is null ) return;
 
@@ -98,9 +114,6 @@ public partial class AdminPanel : PanelComponent
 	// ── Actions (RPC vers le host) ───────────────────────────────────────
 	void DoKick( long steamId )
 	{
-		var target = Connection.All.FirstOrDefault( c => (long)c.SteamId.Value == steamId );
-		if ( target is null ) return;
-
 		var local = Player.FindLocalPlayer();
 		local?.RequestKickPlayer( steamId, _kickReason );
 		_kickReason = "";
@@ -109,12 +122,8 @@ public partial class AdminPanel : PanelComponent
 
 	void DoBan( long steamId )
 	{
-		var target = Connection.All.FirstOrDefault( c => (long)c.SteamId.Value == steamId );
-		if ( target is null ) return;
-
 		var minutes = int.TryParse( _banDuration, out var m ) ? m : 0;
 		AdminPanel_RpcBan( steamId, _banReason, minutes );
-
 		_banReason = ""; _banDuration = "0";
 		StateHasChanged();
 	}
@@ -152,9 +161,9 @@ public partial class AdminPanel : PanelComponent
 
 	// ── RPCs ────────────────────────────────────────────────────────────
 	[Rpc.Host]
-	static void AdminPanel_RpcBan( long targetSteamId, string reason, int durationMinutes )
+	public static void AdminPanel_RpcBan( long targetSteamId, string reason, int durationMinutes )
 	{
-		var caller  = Rpc.Caller;
+		var caller     = Rpc.Caller;
 		var callerRole = DarkDatabase.Instance?.GetRole( (long)caller.SteamId.Value ) ?? StaffRole.Player;
 
 		bool perm = durationMinutes <= 0;
@@ -169,7 +178,7 @@ public partial class AdminPanel : PanelComponent
 			return;
 		}
 
-		var target = Connection.All.FirstOrDefault( c => (long)c.SteamId.Value == targetSteamId );
+		var target   = Connection.All.FirstOrDefault( c => (long)c.SteamId.Value == targetSteamId );
 		TimeSpan? duration = perm ? null : TimeSpan.FromMinutes( durationMinutes );
 
 		if ( target is not null )
@@ -179,7 +188,7 @@ public partial class AdminPanel : PanelComponent
 	}
 
 	[Rpc.Host]
-	static void AdminPanel_RpcUnban( long steamId )
+	public static void AdminPanel_RpcUnban( long steamId )
 	{
 		var caller     = Rpc.Caller;
 		var callerRole = DarkDatabase.Instance?.GetRole( (long)caller.SteamId.Value ) ?? StaffRole.Player;
@@ -195,7 +204,7 @@ public partial class AdminPanel : PanelComponent
 	}
 
 	[Rpc.Host]
-	static void AdminPanel_RpcSetMoney( long targetSteamId, int amount )
+	public static void AdminPanel_RpcSetMoney( long targetSteamId, int amount )
 	{
 		var caller     = Rpc.Caller;
 		var callerRole = DarkDatabase.Instance?.GetRole( (long)caller.SteamId.Value ) ?? StaffRole.Player;
@@ -213,7 +222,7 @@ public partial class AdminPanel : PanelComponent
 	}
 
 	[Rpc.Host]
-	static void AdminPanel_RpcSetJob( long targetSteamId, string jobPath )
+	public static void AdminPanel_RpcSetJob( long targetSteamId, string jobPath )
 	{
 		var caller     = Rpc.Caller;
 		var callerRole = DarkDatabase.Instance?.GetRole( (long)caller.SteamId.Value ) ?? StaffRole.Player;
@@ -242,7 +251,7 @@ public partial class AdminPanel : PanelComponent
 	}
 
 	[Rpc.Host]
-	static void AdminPanel_RpcSetRole( long targetSteamId, int roleInt )
+	public static void AdminPanel_RpcSetRole( long targetSteamId, int roleInt )
 	{
 		var caller     = Rpc.Caller;
 		var callerRole = DarkDatabase.Instance?.GetRole( (long)caller.SteamId.Value ) ?? StaffRole.Player;
@@ -255,7 +264,6 @@ public partial class AdminPanel : PanelComponent
 
 		var role = (StaffRole)roleInt;
 
-		// Seul un fondateur peut promouvoir en Admin ou Fondateur
 		if ( role >= StaffRole.Admin && !callerRole.IsFounder() )
 		{
 			Notices.SendNotice( caller, "block", Color.Red, "Seul un fondateur peut promouvoir au rang Admin+.", 3 );
@@ -266,7 +274,7 @@ public partial class AdminPanel : PanelComponent
 	}
 
 	[Rpc.Host]
-	static void AdminPanel_RpcSetVip( long targetSteamId, bool isVip )
+	public static void AdminPanel_RpcSetVip( long targetSteamId, bool isVip )
 	{
 		var caller     = Rpc.Caller;
 		var callerRole = DarkDatabase.Instance?.GetRole( (long)caller.SteamId.Value ) ?? StaffRole.Player;
