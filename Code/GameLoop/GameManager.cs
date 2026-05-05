@@ -10,7 +10,7 @@ public sealed partial class GameManager : GameObjectSystem<GameManager>, Compone
 	{
 		if ( !Networking.IsActive )
 		{
-			Networking.CreateLobby( new Sandbox.Network.LobbyConfig() { Privacy = Sandbox.Network.LobbyPrivacy.Public, MaxPlayers = 32, Name = "Sandbox", DestroyWhenHostLeaves = true } );
+			Networking.CreateLobby( new Sandbox.Network.LobbyConfig() { Privacy = Sandbox.Network.LobbyPrivacy.Public, MaxPlayers = 20, Name = "Pietro DarkRP | FR 🇫🇷", DestroyWhenHostLeaves = true } );
 		}
 
 		CityLawManager.Ensure( Scene );
@@ -26,7 +26,8 @@ public sealed partial class GameManager : GameObjectSystem<GameManager>, Compone
 		CheckConnectionAchievement( channel );
 		CheckFriendsOnlineStat();
 
-		Scene.Get<Chat>()?.AddSystemText( $"{channel.DisplayName} has joined the game", "👋" );
+		Scene.Get<Chat>()?.AddSystemText( $"{channel.DisplayName} a rejoint le serveur — Bienvenue sur Pietro DarkRP !", "👋" );
+		Scene.Get<Chat>()?.AddSystemText( $"💡 Utilisez F1 pour choisir votre métier. Respectez les règles et amusez-vous bien !", null );
 	}
 
 	/// <summary>

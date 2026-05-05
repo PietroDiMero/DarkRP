@@ -1,11 +1,11 @@
 {
-  "Title": "Medic",
-  "Description": "Support role meant to stabilize injured players and move through active scenes safely.",
+  "Title": "Médecin",
+  "Description": "Soignez les blessés en pleine action. Rôle neutre — tout le monde a besoin de vous, même les criminels.",
   "Category": "Services",
   "AccentColor": "0.3882,0.902,0.7451,1",
   "Salary": 80,
-  "MaxPlayers": 3,
-  "Command": "/medic",
+  "MaxPlayers": 2,
+  "Command": "/medecin",
   "Order": 70,
   "StartingItems": [
     "weapons/crowbar/crowbar.prefab",

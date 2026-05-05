@@ -6,7 +6,7 @@ public sealed partial class Player
 	public const string PoliceChiefJobDefinitionPath = "jobs/police_chief.jobdef";
 	public const string MayorJobDefinitionPath = "jobs/mayor.jobdef";
 	const float ArrestDistance = 180.0f;
-	const float ArrestDuration = 45.0f;
+	const float ArrestDuration = 60.0f;
 	const float ArrestRunSpeedMultiplier = 0.45f;
 	float? preArrestRunSpeed;
 

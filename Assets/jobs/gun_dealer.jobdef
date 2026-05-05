@@ -1,10 +1,10 @@
 {
-  "Title": "Gun Dealer",
-  "Description": "Black-market supplier who starts armed enough to protect stock and territory.",
+  "Title": "Armurier",
+  "Description": "Seul vendeur autorisé d'armes lourdes. Les joueurs dépendent de vous — gérez bien votre stock et protégez votre commerce.",
   "Category": "Commerce",
   "AccentColor": "0.9882,0.6431,0.2863,1",
   "Salary": 80,
-  "MaxPlayers": 3,
+  "MaxPlayers": 2,
   "Command": "/gundealer",
   "Order": 60,
   "StartingItems": [

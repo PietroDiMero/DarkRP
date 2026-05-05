@@ -1,11 +1,11 @@
 {
-  "Title": "Mob Boss",
-  "Description": "High-ranking criminal leader with better equipment and control over gang operations.",
+  "Title": "Parrain",
+  "Description": "Chef du crime organisé. Gérez vos gangsters, montez des opérations et devenez intouchable. Un seul parrain à la fois.",
   "Category": "Criminal",
   "AccentColor": "0.55612,0.19782,0.5907,1",
   "Salary": 110,
   "MaxPlayers": 1,
-  "Command": "/mobboss",
+  "Command": "/parrain",
   "Order": 50,
   "StartingItems": [
     "weapons/colt1911/colt1911.prefab",

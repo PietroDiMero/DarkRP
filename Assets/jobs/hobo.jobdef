@@ -1,11 +1,11 @@
 {
-  "Title": "Hobo",
-  "Description": "Street-level survival role with minimal gear and a rough civilian outfit.",
+  "Title": "SDF",
+  "Description": "Sans-abri sans le sou. Survivez comme vous pouvez dans les rues. Certains hobos deviennent légendaires.",
   "Category": "Civilian",
   "AccentColor": "0.7294,0.7569,0.8275,1",
   "Salary": 0,
-  "MaxPlayers": 3,
-  "Command": "/hobo",
+  "MaxPlayers": 2,
+  "Command": "/sdf",
   "Order": 90,
   "StartingItems": [
     "weapons/crowbar/crowbar.prefab",

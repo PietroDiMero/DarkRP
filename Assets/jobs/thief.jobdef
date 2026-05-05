@@ -1,11 +1,11 @@
 {
-  "Title": "Thief",
-  "Description": "Break into locked homes and slip out before the law arrives.",
+  "Title": "Voleur",
+  "Description": "Spécialiste du crochetage. Cambriolez les maisons verrouillées et disparaissez avant l'arrivée de la police.",
   "Category": "Criminal",
   "AccentColor": "0.9059,0.3569,0.3569,1",
   "Salary": 75,
-  "MaxPlayers": 6,
-  "Command": "/thief",
+  "MaxPlayers": 4,
+  "Command": "/voleur",
   "Order": 45,
   "StartingItems": [
     "weapons/lockpick/lockpick.prefab",

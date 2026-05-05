@@ -1,12 +1,12 @@
 {
-  "Title": "Police Chief",
-  "Description": "Leads Civil Protection and responds to high-risk situations with heavier gear.",
+  "Title": "Commissaire",
+  "Description": "Chef de la police. Guidez vos agents, intervenez en cas de crise et répondez aux demandes du Maire. Vote requis.",
   "Category": "Government",
   "AccentColor": "0.251,0.651,0.9412,1",
   "Salary": 115,
   "MaxPlayers": 1,
   "RequiresVote": true,
-  "Command": "/chief",
+  "Command": "/commissaire",
   "Order": 20,
   "StartingItems": [
     "weapons/glock/glock.prefab",
