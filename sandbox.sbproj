@@ -23,7 +23,7 @@
     "PerMapRanking": false,
     "LeaderboardType": "None",
     "CsProjName": "",
-    "DedicatedServerStartupScene": "scenes/rp_downtown.scene",
+    "DedicatedServerStartupScene": "Assets/scenes/rp_downtown.scene",
     "ControlModes": {
       "Keyboard": true,
       "VR": false,
@@ -31,6 +31,6 @@
     },
     "LaunchMode": "Normal",
     "StartupScene": "scenes/rp_downtown.scene",
-    "SystemScene": "scenes/system.scene"
+    "SystemScene": "Assets/scenes/system.scene"
   }
 }
