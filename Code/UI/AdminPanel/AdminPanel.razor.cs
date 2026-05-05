@@ -80,7 +80,19 @@ public partial class AdminPanel : PanelComponent
 		var myConn = Connection.Local;
 		if ( myConn is null ) return;
 
+		// DarkDatabase n'est disponible que côté serveur dédié.
+		// On l'utilise si disponible, sinon on se rabat sur l'AdminRole synchronisé du Player.
 		_myRole = DarkDatabase.Instance?.GetRole( (long)myConn.SteamId.Value ) ?? StaffRole.Player;
+
+		if ( _myRole == StaffRole.Player )
+		{
+			var localPlayer = Player.FindLocalPlayer();
+			if ( localPlayer is not null )
+			{
+				if      ( localPlayer.HasSuperAdminAccess ) _myRole = StaffRole.Founder;
+				else if ( localPlayer.HasAdminAccess )      _myRole = StaffRole.Admin;
+			}
+		}
 
 		if ( !_myRole.HasPanelAccess() )
 		{
