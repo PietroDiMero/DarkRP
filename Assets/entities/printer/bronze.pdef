@@ -1,11 +1,11 @@
 {
   "Prefab": "entities/printer/money_printer.prefab",
   "Title": "Bronze Printer",
-  "Description": "Entry-level printer that generates $25 every 20 seconds.",
+  "Description": "Imprimante d'entrée de gamme. Génère 12$ toutes les 20 secondes.",
   "Price": 500,
-  "MoneyPerTick": 25,
-  "Interval": 20,
-  "MaxStoredMoney": 8000,
+  "MoneyPerTick": 12,
+  "Interval": 20.0,
+  "MaxStoredMoney": 5000,
   "Tint": "0.33725,0.07843,0,1",
   "__references": [],
   "__version": 0

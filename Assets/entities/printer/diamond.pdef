@@ -1,11 +1,11 @@
 {
   "Prefab": "entities/printer/money_printer.prefab",
   "Title": "Diamond Printer",
-  "Description": "Top-tier printer that generates $25 every 5 seconds.",
-  "Price": 4800,
-  "MoneyPerTick": 25,
-  "Interval": 5,
-  "MaxStoredMoney": 8000,
+  "Description": "Imprimante ultime. Génère 65$ toutes les 20 secondes.",
+  "Price": 6000,
+  "MoneyPerTick": 65,
+  "Interval": 20.0,
+  "MaxStoredMoney": 22000,
   "Tint": "0,0.85098,1,1",
   "__references": [],
   "__version": 0

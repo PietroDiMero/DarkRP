@@ -3,7 +3,7 @@
   "Description": "Préparez à manger pour les autres citoyens. Un métier utile et tranquille, loin des conflits.",
   "Category": "Services",
   "AccentColor": "0.9843,0.7451,0.3098,1",
-  "Salary": 55,
+  "Salary": 50,
   "MaxPlayers": 2,
   "Command": "/cuisinier",
   "Order": 80,

@@ -3,7 +3,7 @@
   "Description": "Habitant ordinaire de la ville. Pas d'autorité particulière — travaillez, commercez et trouvez votre place dans la société.",
   "Category": "Civilian",
   "AccentColor": "0.8471,0.9098,1,1",
-  "Salary": 60,
+  "Salary": 45,
   "MaxPlayers": 0,
   "Command": "/citoyen",
   "Order": 0,

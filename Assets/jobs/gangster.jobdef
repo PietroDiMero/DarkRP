@@ -3,7 +3,7 @@
   "Description": "Petit criminel des rues. Rejoignez un Mob Boss et étendez votre empire illégal dans les rues de la ville.",
   "Category": "Criminal",
   "AccentColor": "0.84265,0.39459,0.88372,1",
-  "Salary": 70,
+  "Salary": 55,
   "MaxPlayers": 5,
   "Command": "/gangster",
   "Order": 40,

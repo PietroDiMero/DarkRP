@@ -3,7 +3,7 @@
   "Description": "Agent de police chargé des patrouilles, des arrestations et du maintien de l'ordre dans les rues.",
   "Category": "Government",
   "AccentColor": "0.3373,0.7176,0.9765,1",
-  "Salary": 85,
+  "Salary": 75,
   "MaxPlayers": 4,
   "Command": "/cp",
   "Order": 10,

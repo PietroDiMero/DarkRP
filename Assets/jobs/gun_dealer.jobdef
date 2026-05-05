@@ -3,7 +3,7 @@
   "Description": "Seul vendeur autorisé d'armes lourdes. Les joueurs dépendent de vous — gérez bien votre stock et protégez votre commerce.",
   "Category": "Commerce",
   "AccentColor": "0.9882,0.6431,0.2863,1",
-  "Salary": 80,
+  "Salary": 60,
   "MaxPlayers": 2,
   "Command": "/gundealer",
   "Order": 60,
