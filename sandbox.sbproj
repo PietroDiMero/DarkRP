@@ -6,7 +6,7 @@
   "Schema": 1,
   "IncludeSourceFiles": false,
   "Resources": "/fonts/*\n/UI/*.png\n/ui/*.png\n/ui/*\n/ui/weapons/melee/*",
-  "PackageReferences": [],
+  "PackageReferences": ["sousoup.darkrp2"],
   "EditorReferences": null,
   "Mounts": [],
   "IsStandaloneOnly": false,
@@ -23,7 +23,7 @@
     "PerMapRanking": false,
     "LeaderboardType": "None",
     "CsProjName": "",
-    "DedicatedServerStartupScene": "Assets/scenes/rp_downtown.scene",
+    "DedicatedServerStartupScene": "scenes/rp_downtown.scene",
     "ControlModes": {
       "Keyboard": true,
       "VR": false,
@@ -31,6 +31,6 @@
     },
     "LaunchMode": "Normal",
     "StartupScene": "scenes/rp_downtown.scene",
-    "SystemScene": "Assets/scenes/system.scene"
+    "SystemScene": "scenes/system.scene"
   }
 }
