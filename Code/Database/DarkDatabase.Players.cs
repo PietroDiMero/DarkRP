@@ -38,8 +38,44 @@ public sealed partial class DarkDatabase
 		_players[steamId] = record;
 		await SavePlayerAsync( record );
 
-		// Synchroniser le rôle avec AdminSystem natif du gamemode
-		SyncRoleToAdminSystem( steamId, record.StaffRole );
+		// Synchroniser rôle + argent vers le composant Player.
+		// On utilise un retry car le Player component peut ne pas être encore spawn
+		// au moment où RegisterOrUpdatePlayerAsync s'exécute (timing async).
+		_ = SyncPlayerDataOnConnectAsync( connection, record );
+	}
+
+	/// <summary>
+	/// Applique les données MySQL (rôle staff + argent) au composant Player côté serveur.
+	/// Réessaie toutes les 250ms pendant 5s max, car le Player component peut spawn
+	/// quelques frames après la connexion réseau.
+	/// </summary>
+	async Task SyncPlayerDataOnConnectAsync( Connection conn, PlayerRecord record )
+	{
+		var adminRole = record.StaffRole.ToAdminRole();
+		var steamId64 = (SteamId)record.SteamId;
+
+		// AdminSystem disponible immédiatement (indépendant du Player component)
+		AdminSystem.Current?.SetRole( steamId64, adminRole, conn.DisplayName );
+
+		// Retry jusqu'à ce que le composant Player soit spawn
+		for ( int i = 0; i < 20; i++ )
+		{
+			await Task.Delay( 250 );
+			await GameTask.MainThread();
+
+			var player = Player.FindForConnection( conn );
+			if ( !player.IsValid() ) continue;
+
+			player.SetAdminRole( adminRole );
+			player.SetMoney( record.Money );
+
+			Log.Info( $"[DarkDatabase] ✅ Sync {conn.DisplayName} — " +
+			          $"argent: ${record.Money} | rôle: {record.StaffRole.GetLabel()} ({i * 250}ms)" );
+			return;
+		}
+
+		Log.Warning( $"[DarkDatabase] ⚠️ Timeout sync {conn.DisplayName} — " +
+		             "Player component introuvable après 5s. Rôle et argent non appliqués." );
 	}
 
 	// ── Getters ─────────────────────────────────────────────────────────────
