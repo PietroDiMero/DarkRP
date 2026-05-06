@@ -4,7 +4,8 @@ namespace Sandbox;
 
 /// <summary>
 /// Client HTTP pour le sidecar PHP DarkRP → MySQL.
-/// Utilise Sandbox.Http (whitelisté). Http.RequestAsync retourne HttpResponseMessage.
+/// Signature réelle de Http.RequestAsync :
+///   RequestAsync(url, method, HttpContent content, Dictionary headers, CancellationToken)
 /// </summary>
 public static class DarkHttpClient
 {
@@ -29,8 +30,8 @@ public static class DarkHttpClient
 	{
 		try
 		{
-			// Http.RequestAsync retourne HttpResponseMessage (pas une string)
-			var resp = await Http.RequestAsync( $"{BaseUrl}/ping", "GET", null, null, _headers );
+			// GET sans body : content = null, headers = _headers
+			var resp = await Http.RequestAsync( $"{BaseUrl}/ping", "GET", null, _headers );
 			return resp is not null && resp.IsSuccessStatusCode;
 		}
 		catch { return false; }
@@ -41,7 +42,7 @@ public static class DarkHttpClient
 	{
 		try
 		{
-			var resp = await Http.RequestAsync( $"{BaseUrl}/{path}", "GET", null, null, _headers );
+			var resp = await Http.RequestAsync( $"{BaseUrl}/{path}", "GET", null, _headers );
 			if ( resp is null || !resp.IsSuccessStatusCode ) return null;
 
 			var json = await resp.Content.ReadAsStringAsync();
@@ -54,14 +55,15 @@ public static class DarkHttpClient
 		}
 	}
 
-	// ── POST avec body JSON (arguments positionnels, pas de named 'body') ─
+	// ── POST avec body JSON ───────────────────────────────────────────────
 	public static async Task<bool> PostAsync( string path, object body )
 	{
 		try
 		{
-			var json = JsonSerializer.Serialize( body, _jsonOpts );
-			// Signature réelle : RequestAsync(url, method, content, contentType, headers)
-			var resp = await Http.RequestAsync( $"{BaseUrl}/{path}", "POST", json, "application/json", _headers );
+			var json    = JsonSerializer.Serialize( body, _jsonOpts );
+			// StringContent implémente HttpContent — requis par la signature de Http.RequestAsync
+			var content = new System.Net.Http.StringContent( json, System.Text.Encoding.UTF8, "application/json" );
+			var resp    = await Http.RequestAsync( $"{BaseUrl}/{path}", "POST", content, _headers );
 			return resp is not null && resp.IsSuccessStatusCode;
 		}
 		catch ( Exception ex )
@@ -76,14 +78,5 @@ public static class DarkHttpClient
 	{
 		try
 		{
-			var json = JsonSerializer.Serialize( body, _jsonOpts );
-			var resp = await Http.RequestAsync( $"{BaseUrl}/{path}", "PATCH", json, "application/json", _headers );
-			return resp is not null && resp.IsSuccessStatusCode;
-		}
-		catch ( Exception ex )
-		{
-			Log.Warning( ex, $"[DarkHttpClient] PATCH {path} échoué." );
-			return false;
-		}
-	}
-}
+			var json    = JsonSerializer.Serialize( body, _jsonOpts );
+			var content = new System.Net.Http.StringContent( json, Syste
