@@ -30,7 +30,6 @@ public static class DarkHttpClient
 	{
 		try
 		{
-			// GET sans body : content = null, headers = _headers
 			var resp = await Http.RequestAsync( $"{BaseUrl}/ping", "GET", null, _headers );
 			return resp is not null && resp.IsSuccessStatusCode;
 		}
@@ -50,7 +49,7 @@ public static class DarkHttpClient
 		}
 		catch ( Exception ex )
 		{
-			Log.Warning( ex, $"[DarkHttpClient] GET {path} échoué." );
+			Log.Warning( ex, $"[DarkHttpClient] GET {path} echoue." );
 			return null;
 		}
 	}
@@ -61,14 +60,13 @@ public static class DarkHttpClient
 		try
 		{
 			var json    = JsonSerializer.Serialize( body, _jsonOpts );
-			// StringContent implémente HttpContent — requis par la signature de Http.RequestAsync
 			var content = new System.Net.Http.StringContent( json, System.Text.Encoding.UTF8, "application/json" );
 			var resp    = await Http.RequestAsync( $"{BaseUrl}/{path}", "POST", content, _headers );
 			return resp is not null && resp.IsSuccessStatusCode;
 		}
 		catch ( Exception ex )
 		{
-			Log.Warning( ex, $"[DarkHttpClient] POST {path} échoué." );
+			Log.Warning( ex, $"[DarkHttpClient] POST {path} echoue." );
 			return false;
 		}
 	}
@@ -79,4 +77,14 @@ public static class DarkHttpClient
 		try
 		{
 			var json    = JsonSerializer.Serialize( body, _jsonOpts );
-			var content = new System.Net.Http.StringContent( json, Syste
+			var content = new System.Net.Http.StringContent( json, System.Text.Encoding.UTF8, "application/json" );
+			var resp    = await Http.RequestAsync( $"{BaseUrl}/{path}", "PATCH", content, _headers );
+			return resp is not null && resp.IsSuccessStatusCode;
+		}
+		catch ( Exception ex )
+		{
+			Log.Warning( ex, $"[DarkHttpClient] PATCH {path} echoue." );
+			return false;
+		}
+	}
+}
