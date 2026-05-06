@@ -1,22 +1,18 @@
-using System.Text.Json;
-
 namespace Sandbox;
 
 public sealed partial class DarkDatabase
 {
-	// ── Enregistrement / mise à jour à la connexion ─────────────────────
+	// ── Enregistrement / mise à jour à la connexion ─────────────────────────
 	async Task RegisterOrUpdatePlayerAsync( Connection connection )
 	{
-		await Task.Yield();
+		await Task.Yield(); // Évite de bloquer le thread principal
 
 		var steamId = (long)connection.SteamId.Value;
 		var ip      = connection.Address ?? "";
 
+		// Essayer de charger depuis MySQL si pas en cache
 		if ( !_players.TryGetValue( steamId, out var record ) )
-		{
-			// Essayer de charger depuis le fichier
-			record = LoadPlayer( steamId );
-		}
+			record = await LoadPlayerAsync( steamId );
 
 		if ( record is null )
 		{
@@ -29,7 +25,7 @@ public sealed partial class DarkDatabase
 				FirstSeen = DateTime.UtcNow,
 				LastSeen  = DateTime.UtcNow,
 			};
-			Log.Info( $"[DarkDatabase] Nouveau joueur enregistré : {connection.DisplayName} ({steamId})" );
+			Log.Info( $"[DarkDatabase] Nouveau joueur : {connection.DisplayName} ({steamId})" );
 		}
 		else
 		{
@@ -40,35 +36,45 @@ public sealed partial class DarkDatabase
 		}
 
 		_players[steamId] = record;
-		SavePlayer( record );
+		await SavePlayerAsync( record );
 
-		// Synchroniser le rôle avec AdminSystem
+		// Synchroniser le rôle avec AdminSystem natif du gamemode
 		SyncRoleToAdminSystem( steamId, record.StaffRole );
 	}
 
-	// ── Getters ─────────────────────────────────────────────────────────
+	// ── Getters ─────────────────────────────────────────────────────────────
 	public PlayerRecord GetPlayer( long steamId )
 	{
+		// Cache en premier
 		if ( _players.TryGetValue( steamId, out var cached ) ) return cached;
-		var loaded = LoadPlayer( steamId );
-		if ( loaded != null ) _players[steamId] = loaded;
-		return loaded;
+
+		// Chargement synchrone depuis MySQL n'est pas possible ici sans bloquer.
+		// On retourne null — le chargement async se fait via RegisterOrUpdatePlayerAsync.
+		// Pour les besoins du panel admin, utiliser GetAllPlayersAsync().
+		return null;
 	}
 
 	public PlayerRecord GetPlayer( Connection connection ) =>
 		GetPlayer( (long)connection.SteamId.Value );
 
+	/// <summary>Retourne les joueurs actuellement en cache (joueurs connectés + récemment chargés).</summary>
 	public IReadOnlyList<PlayerRecord> GetAllPlayers() =>
 		_players.Values.ToList().AsReadOnly();
 
-	// ── Money ───────────────────────────────────────────────────────────
+	/// <summary>
+	/// Charge TOUS les joueurs depuis MySQL (pour le panneau admin).
+	/// À appeler via RPC depuis le serveur, pas directement côté client.
+	/// </summary>
+	public async Task<List<PlayerRecord>> GetAllPlayersFromDbAsync() =>
+		await DarkHttpClient.GetAsync<List<PlayerRecord>>( "players" ) ?? new();
+
+	// ── Money ───────────────────────────────────────────────────────────────
 	public void SetMoney( long steamId, int amount )
 	{
 		if ( !_players.TryGetValue( steamId, out var record ) ) return;
 		record.Money = Math.Max( 0, amount );
-		SavePlayer( record );
+		_ = DarkHttpClient.PatchAsync( $"players/{steamId}/money", new { money = record.Money } );
 
-		// Synchroniser avec le composant Player en ligne
 		SyncMoneyToPlayer( steamId, record.Money );
 	}
 
@@ -76,94 +82,122 @@ public sealed partial class DarkDatabase
 	{
 		if ( !_players.TryGetValue( steamId, out var record ) ) return;
 		record.Money = Math.Max( 0, record.Money + amount );
-		SavePlayer( record );
+		_ = DarkHttpClient.PatchAsync( $"players/{steamId}/money", new { money = record.Money } );
+
 		SyncMoneyToPlayer( steamId, record.Money );
 	}
 
+	/// <summary>Synchronise l'argent depuis le composant Player vers le cache (sans sauvegarder immédiatement).</summary>
 	public void SyncMoneyFromPlayer( long steamId, int currentMoney )
 	{
 		if ( !_players.TryGetValue( steamId, out var record ) ) return;
 		record.Money = currentMoney;
-		// Pas de SavePlayer ici — fait par l'auto-save périodique
+		// Pas de sauvegarde ici — l'auto-save périodique le fera
 	}
 
-	// ── VIP ─────────────────────────────────────────────────────────────
+	// ── VIP ─────────────────────────────────────────────────────────────────
 	public void SetVip( long steamId, bool isVip )
 	{
 		if ( !_players.TryGetValue( steamId, out var record ) ) return;
 		record.IsVip = isVip;
-		SavePlayer( record );
+		_ = DarkHttpClient.PatchAsync( $"players/{steamId}/vip", new { is_vip = isVip } );
+
 		Log.Info( $"[DarkDatabase] VIP {(isVip ? "activé" : "désactivé")} pour {steamId}" );
 	}
 
 	public bool IsVip( long steamId ) =>
 		_players.TryGetValue( steamId, out var r ) && r.IsVip;
 
-	// ── Inventaire persistant ───────────────────────────────────────────
+	// ── Inventaire persistant ───────────────────────────────────────────────
 	public void SetPersistentInventory( long steamId, IEnumerable<string> items )
 	{
 		if ( !_players.TryGetValue( steamId, out var record ) ) return;
 		record.PersistentInventory = items.ToList();
-		SavePlayer( record );
+		_ = SavePlayerAsync( record ); // Sauvegarde complète pour l'inventaire
 	}
 
 	public List<string> GetPersistentInventory( long steamId ) =>
 		_players.TryGetValue( steamId, out var r ) ? r.PersistentInventory : new();
 
-	// ── Job ─────────────────────────────────────────────────────────────
+	// ── Job ─────────────────────────────────────────────────────────────────
 	public void SaveLastJob( long steamId, string jobPath )
 	{
 		if ( !_players.TryGetValue( steamId, out var record ) ) return;
 		record.LastJobPath = jobPath;
+		// Pas de sauvegarde immédiate (fréquent) — auto-save périodique
 	}
 
-	// ── Statistiques ────────────────────────────────────────────────────
+	// ── Statistiques ────────────────────────────────────────────────────────
 	public void AddKill( long steamId )
 	{
-		if ( !_players.TryGetValue( steamId, out var r ) ) return;
-		r.Kills++;
+		if ( _players.TryGetValue( steamId, out var r ) ) r.Kills++;
 	}
 
 	public void AddDeath( long steamId )
 	{
+		if ( _players.TryGetValue( steamId, out var r ) ) r.Deaths++;
+	}
+
+	// ── Warnings ────────────────────────────────────────────────────────────
+	public void AddWarning( long steamId )
+	{
 		if ( !_players.TryGetValue( steamId, out var r ) ) return;
-		r.Deaths++;
+		r.Warnings++;
+		_ = DarkHttpClient.PatchAsync( $"players/{steamId}/warnings", new { warnings = r.Warnings } );
 	}
 
-	// ── Persistance fichier ─────────────────────────────────────────────
-	void SavePlayer( PlayerRecord record )
+	// ── Jail ────────────────────────────────────────────────────────────────
+	public void SetJail( long steamId, bool isJailed, DateTime? until = null )
 	{
-		var path = PlayerPath( record.SteamId );
-		try
+		if ( !_players.TryGetValue( steamId, out var r ) ) return;
+		r.IsJailed  = isJailed;
+		r.JailUntil = until;
+		_ = DarkHttpClient.PatchAsync( $"players/{steamId}/jail", new
 		{
-			var json = JsonSerializer.Serialize( record, new JsonSerializerOptions { WriteIndented = true } );
-			FileSystem.Data.WriteAllText( path, json );
-		}
-		catch ( Exception ex )
-		{
-			Log.Warning( ex, $"[DarkDatabase] Impossible de sauvegarder le joueur {record.SteamId}" );
-		}
+			is_jailed  = isJailed,
+			jail_until = until?.ToString( "o" ) // ISO 8601
+		} );
 	}
 
-	PlayerRecord LoadPlayer( long steamId )
+	// ── Persistance HTTP ────────────────────────────────────────────────────
+
+	/// <summary>Sauvegarde un PlayerRecord complet dans MySQL via le sidecar.</summary>
+	async Task SavePlayerAsync( PlayerRecord record )
 	{
-		var path = PlayerPath( steamId );
-		if ( !FileSystem.Data.FileExists( path ) ) return null;
-		try
+		// On sérialise en un objet anonyme avec les bons noms JSON attendus par le PHP
+		var payload = new
 		{
-			var json = FileSystem.Data.ReadAllText( path );
-			return JsonSerializer.Deserialize<PlayerRecord>( json );
-		}
-		catch ( Exception ex )
-		{
-			Log.Warning( ex, $"[DarkDatabase] Impossible de charger le joueur {steamId}" );
-			return null;
-		}
+			steam_id             = record.SteamId,
+			steam_name           = record.SteamName,
+			rp_name              = record.RpName,
+			last_ip              = record.LastIp,
+			money                = record.Money,
+			is_vip               = record.IsVip,
+			staff_role           = (int)record.StaffRole,
+			warnings             = record.Warnings,
+			is_jailed            = record.IsJailed,
+			jail_until           = record.JailUntil?.ToString( "o" ),
+			playtime_seconds     = record.PlaytimeSeconds,
+			kills                = record.Kills,
+			deaths               = record.Deaths,
+			first_seen           = record.FirstSeen.ToString( "o" ),
+			last_seen            = record.LastSeen.ToString( "o" ),
+			last_job             = record.LastJobPath,
+			persistent_inventory = record.PersistentInventory,
+		};
+
+		var ok = await DarkHttpClient.PostAsync( "players", payload );
+		if ( !ok )
+			Log.Warning( $"[DarkDatabase] Impossible de sauvegarder le joueur {record.SteamId}" );
 	}
 
-	static string PlayerPath( long steamId ) => $"{PlayersDir}/{steamId}.json";
+	/// <summary>Charge un PlayerRecord depuis MySQL. Retourne null si inconnu.</summary>
+	async Task<PlayerRecord> LoadPlayerAsync( long steamId )
+	{
+		return await DarkHttpClient.GetAsync<PlayerRecord>( $"players/{steamId}" );
+	}
 
-	// ── Synchro avec composants en ligne ────────────────────────────────
+	// ── Sync vers composants en ligne ────────────────────────────────────────
 	static void SyncMoneyToPlayer( long steamId, int money )
 	{
 		var conn = Connection.All.FirstOrDefault( c => (long)c.SteamId.Value == steamId );

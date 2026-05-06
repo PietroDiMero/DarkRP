@@ -29,3 +29,7 @@ code/Properties/*
 Exports/
 *.user
 *.slnx
+
+# DarkRP — Fichiers sensibles à ne JAMAIS committer
+darkapi/config.php          # Contient les credentials MySQL
+/tmp/darkrp_api.log

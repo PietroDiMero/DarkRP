@@ -1,22 +1,21 @@
-using System.Text.Json;
 using Sandbox.UI;
 
 namespace Sandbox;
 
 public sealed partial class DarkDatabase
 {
-	// ── Ban par connexion active ─────────────────────────────────────────
+	// ── Ban par connexion active ─────────────────────────────────────────────
 	public BanRecord BanPlayer(
 		Connection target,
-		string reason,
-		Connection admin        = null,
-		TimeSpan?  duration     = null,
-		bool       banIp        = false )
+		string     reason,
+		Connection admin    = null,
+		TimeSpan?  duration = null,
+		bool       banIp    = false )
 	{
 		Assert.True( Networking.IsHost );
 
-		var steamId  = (long)target.SteamId.Value;
-		var adminId  = admin is not null ? (long?)admin.SteamId.Value : null;
+		var steamId   = (long)target.SteamId.Value;
+		var adminId   = admin is not null ? (long?)admin.SteamId.Value : null;
 		var adminName = admin?.DisplayName;
 
 		var record = CreateBanRecord(
@@ -24,8 +23,9 @@ public sealed partial class DarkDatabase
 			target.Address, banIp,
 			reason, adminId, adminName, duration );
 
+		// Mise à jour cache + MySQL
 		_bans[steamId] = record;
-		SaveBans();
+		_ = SaveBanAsync( record );
 
 		LogAction( admin, target.DisplayName, steamId, "BAN",
 			$"{reason} | Durée: {record.FormatDuration()} | IP: {banIp}" );
@@ -39,7 +39,7 @@ public sealed partial class DarkDatabase
 		return record;
 	}
 
-	// ── Ban par SteamId (hors ligne) ────────────────────────────────────
+	// ── Ban par SteamId (joueur hors ligne) ─────────────────────────────────
 	public BanRecord BanSteamId(
 		long       steamId,
 		string     displayName,
@@ -58,14 +58,15 @@ public sealed partial class DarkDatabase
 			reason, adminId, adminName, duration );
 
 		_bans[steamId] = record;
-		SaveBans();
+		_ = SaveBanAsync( record );
+
 		LogAction( admin, displayName, steamId, "BAN_OFFLINE",
 			$"{reason} | Durée: {record.FormatDuration()}" );
 
 		return record;
 	}
 
-	// ── Unban ───────────────────────────────────────────────────────────
+	// ── Unban ───────────────────────────────────────────────────────────────
 	public bool Unban( long steamId, Connection admin = null )
 	{
 		Assert.True( Networking.IsHost );
@@ -73,18 +74,16 @@ public sealed partial class DarkDatabase
 		if ( !_bans.TryGetValue( steamId, out var ban ) ) return false;
 
 		ban.IsActive = false;
-		SaveBans();
-		LogAction( admin, ban.DisplayName, steamId, "UNBAN", "" );
+		_ = DarkHttpClient.PatchAsync( $"bans/{steamId}/unban", new { } );
 
+		LogAction( admin, ban.DisplayName, steamId, "UNBAN", "" );
 		Log.Info( $"[DarkDatabase] Unban : {ban.DisplayName} ({steamId})" );
 		return true;
 	}
 
-	// ── Getters ─────────────────────────────────────────────────────────
-	public bool IsBanned( long steamId )
-	{
-		return _bans.TryGetValue( steamId, out var b ) && b.IsActive;
-	}
+	// ── Getters ─────────────────────────────────────────────────────────────
+	public bool IsBanned( long steamId ) =>
+		_bans.TryGetValue( steamId, out var b ) && b.IsActive;
 
 	public BanRecord GetBan( long steamId ) =>
 		_bans.TryGetValue( steamId, out var b ) ? b : null;
@@ -92,15 +91,15 @@ public sealed partial class DarkDatabase
 	public IReadOnlyList<BanRecord> GetActiveBans() =>
 		_bans.Values.Where( b => b.IsActive ).ToList().AsReadOnly();
 
-	// ── Construction interne ────────────────────────────────────────────
+	// ── Construction interne ────────────────────────────────────────────────
 	static BanRecord CreateBanRecord(
-		long    steamId,
-		string  displayName,
-		string  ip,
-		bool    banIp,
-		string  reason,
-		long?   adminId,
-		string  adminName,
+		long      steamId,
+		string    displayName,
+		string    ip,
+		bool      banIp,
+		string    reason,
+		long?     adminId,
+		string    adminName,
 		TimeSpan? duration )
 	{
 		return new BanRecord
@@ -116,39 +115,44 @@ public sealed partial class DarkDatabase
 		};
 	}
 
-	// ── Persistance ─────────────────────────────────────────────────────
-	void LoadBans()
+	// ── Persistance HTTP ────────────────────────────────────────────────────
+
+	/// <summary>Charge tous les bans actifs depuis MySQL et remplit le cache.</summary>
+	async Task LoadBansAsync()
 	{
-		if ( !FileSystem.Data.FileExists( BansFile ) ) return;
-		try
+		var bans = await DarkHttpClient.GetAsync<List<BanRecord>>( "bans" );
+		if ( bans is null )
 		{
-			var json    = FileSystem.Data.ReadAllText( BansFile );
-			var records = JsonSerializer.Deserialize<List<BanRecord>>( json ) ?? new();
-			foreach ( var r in records )
-			{
-				if ( r.SteamId.HasValue )
-					_bans[r.SteamId.Value] = r;
-			}
-			Log.Info( $"[DarkDatabase] {_bans.Count} ban(s) chargé(s)." );
+			Log.Warning( "[DarkDatabase] Impossible de charger les bans depuis MySQL." );
+			return;
 		}
-		catch ( Exception ex )
+
+		_bans.Clear();
+		foreach ( var b in bans )
 		{
-			Log.Warning( ex, "[DarkDatabase] Impossible de charger les bans." );
+			if ( b.SteamId.HasValue )
+				_bans[b.SteamId.Value] = b;
 		}
+
+		Log.Info( $"[DarkDatabase] {_bans.Count} ban(s) actif(s) chargé(s)." );
 	}
 
-	void SaveBans()
+	/// <summary>Enregistre un nouveau ban dans MySQL.</summary>
+	async Task SaveBanAsync( BanRecord record )
 	{
-		try
+		var payload = new
 		{
-			var json = JsonSerializer.Serialize(
-				_bans.Values.ToList(),
-				new JsonSerializerOptions { WriteIndented = true } );
-			FileSystem.Data.WriteAllText( BansFile, json );
-		}
-		catch ( Exception ex )
-		{
-			Log.Warning( ex, "[DarkDatabase] Impossible de sauvegarder les bans." );
-		}
+			steam_id       = record.SteamId,
+			ip             = record.Ip,
+			display_name   = record.DisplayName,
+			reason         = record.Reason,
+			admin_steam_id = record.AdminSteamId,
+			admin_name     = record.AdminName,
+			expires_at     = record.ExpiresAt?.ToString( "o" ),
+		};
+
+		var ok = await DarkHttpClient.PostAsync( "bans", payload );
+		if ( !ok )
+			Log.Warning( $"[DarkDatabase] Impossible de sauvegarder le ban pour {record.SteamId}" );
 	}
 }
