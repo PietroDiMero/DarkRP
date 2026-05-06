@@ -9,7 +9,7 @@ namespace Sandbox;
 /// </summary>
 public static class DarkHttpClient
 {
-	const string BaseUrl = "http://127.0.0.1:9000";
+	const string BaseUrl = "https://cornflowerblue-dolphin-286674.hostingersite.com/darkapi";
 
 	/// <summary>⚠️ Identique à API_KEY dans darkapi/config.php</summary>
 	public const string ApiKey = "349c7e8efdb530c7fae5b294be087d43da63fb45d827d621bb4657d07480c5a0";
