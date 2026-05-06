@@ -3,14 +3,14 @@ using System.Text.Json;
 namespace Sandbox;
 
 /// <summary>
-/// Client HTTP pour communiquer avec le sidecar PHP DarkRP (→ MySQL).
-/// Utilise l'API Http native de S&Box (whitelist compatible).
+/// Client HTTP pour le sidecar PHP DarkRP → MySQL.
+/// Utilise Sandbox.Http (whitelisté). Http.RequestAsync retourne HttpResponseMessage.
 /// </summary>
 public static class DarkHttpClient
 {
 	const string BaseUrl = "http://127.0.0.1:9000";
 
-	/// <summary>⚠️ Doit être identique à API_KEY dans darkapi/config.php</summary>
+	/// <summary>⚠️ Identique à API_KEY dans darkapi/config.php</summary>
 	public const string ApiKey = "349c7e8efdb530c7fae5b294be087d43da63fb45d827d621bb4657d07480c5a0";
 
 	static readonly Dictionary<string, string> _headers = new()
@@ -29,22 +29,22 @@ public static class DarkHttpClient
 	{
 		try
 		{
-			var result = await Http.RequestAsync( $"{BaseUrl}/ping", "GET",
-				headers: _headers );
-			return !string.IsNullOrEmpty( result );
+			// Http.RequestAsync retourne HttpResponseMessage (pas une string)
+			var resp = await Http.RequestAsync( $"{BaseUrl}/ping", "GET", null, null, _headers );
+			return resp is not null && resp.IsSuccessStatusCode;
 		}
 		catch { return false; }
 	}
 
-	// ── GET → désérialise la réponse JSON en T ────────────────────────────
+	// ── GET → désérialise le JSON en T ───────────────────────────────────
 	public static async Task<T> GetAsync<T>( string path ) where T : class
 	{
 		try
 		{
-			var json = await Http.RequestAsync( $"{BaseUrl}/{path}", "GET",
-				headers: _headers );
+			var resp = await Http.RequestAsync( $"{BaseUrl}/{path}", "GET", null, null, _headers );
+			if ( resp is null || !resp.IsSuccessStatusCode ) return null;
 
-			if ( string.IsNullOrEmpty( json ) ) return null;
+			var json = await resp.Content.ReadAsStringAsync();
 			return JsonSerializer.Deserialize<T>( json, _jsonOpts );
 		}
 		catch ( Exception ex )
@@ -54,16 +54,15 @@ public static class DarkHttpClient
 		}
 	}
 
-	// ── POST avec body JSON ───────────────────────────────────────────────
+	// ── POST avec body JSON (arguments positionnels, pas de named 'body') ─
 	public static async Task<bool> PostAsync( string path, object body )
 	{
 		try
 		{
 			var json = JsonSerializer.Serialize( body, _jsonOpts );
-			var result = await Http.RequestAsync( $"{BaseUrl}/{path}", "POST",
-				body: json, contentType: "application/json", headers: _headers );
-
-			return result != null;
+			// Signature réelle : RequestAsync(url, method, content, contentType, headers)
+			var resp = await Http.RequestAsync( $"{BaseUrl}/{path}", "POST", json, "application/json", _headers );
+			return resp is not null && resp.IsSuccessStatusCode;
 		}
 		catch ( Exception ex )
 		{
@@ -78,10 +77,8 @@ public static class DarkHttpClient
 		try
 		{
 			var json = JsonSerializer.Serialize( body, _jsonOpts );
-			var result = await Http.RequestAsync( $"{BaseUrl}/{path}", "PATCH",
-				body: json, contentType: "application/json", headers: _headers );
-
-			return result != null;
+			var resp = await Http.RequestAsync( $"{BaseUrl}/{path}", "PATCH", json, "application/json", _headers );
+			return resp is not null && resp.IsSuccessStatusCode;
 		}
 		catch ( Exception ex )
 		{
