@@ -36,13 +36,7 @@ public sealed partial class DarkDatabase : GameObjectSystem<DarkDatabase>, Compo
 
 	async Task InitAsync()
 	{
-		Log.Info( "[DarkDatabase] Démarrage du sidecar PHP MySQL..." );
-
-		// Auto-démarrer le sidecar PHP si pas déjà actif
-		StartPhpSidecar();
-
-		// Laisser 3 secondes à PHP pour démarrer
-		await Task.Delay( 3000 );
+		Log.Info( "[DarkDatabase] Connexion au sidecar PHP MySQL..." );
 
 		// Test de connectivité
 		if ( !await DarkHttpClient.PingAsync() )
@@ -175,40 +169,6 @@ public sealed partial class DarkDatabase : GameObjectSystem<DarkDatabase>, Compo
 		}
 
 		return $"Banni définitivement : {ban.Reason}";
-	}
-
-	// ── Démarrage automatique du sidecar PHP ───────────────────────────────
-	static void StartPhpSidecar()
-	{
-		try
-		{
-			// Ne pas en démarrer un second si déjà actif
-			var existing = System.Diagnostics.Process.GetProcessesByName( "php" );
-			if ( existing.Length > 0 )
-			{
-				Log.Info( "[DarkDatabase] Sidecar PHP déjà en cours." );
-				return;
-			}
-
-			var apiPath = "/home/container/projects/darkrp/darkapi/index.php";
-
-			var psi = new System.Diagnostics.ProcessStartInfo
-			{
-				FileName               = "php",
-				Arguments              = $"-S 127.0.0.1:9000 {apiPath}",
-				UseShellExecute        = false,
-				RedirectStandardOutput = false,
-				RedirectStandardError  = false,
-				CreateNoWindow         = true,
-			};
-
-			var proc = System.Diagnostics.Process.Start( psi );
-			Log.Info( $"[DarkDatabase] ✅ Sidecar PHP lancé (PID: {proc?.Id})" );
-		}
-		catch ( Exception ex )
-		{
-			Log.Warning( ex, "[DarkDatabase] Impossible de démarrer le sidecar PHP." );
-		}
 	}
 
 	// ── Accesseur global ────────────────────────────────────────────────────
