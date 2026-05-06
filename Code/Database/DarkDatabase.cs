@@ -41,8 +41,8 @@ public sealed partial class DarkDatabase : GameObjectSystem<DarkDatabase>, Compo
 		// Test de connectivité
 		if ( !await DarkHttpClient.PingAsync() )
 		{
-			Log.Error( "[DarkDatabase] ❌ Sidecar API inaccessible sur http://127.0.0.1:9000" );
-			Log.Error( "[DarkDatabase]    → Vérifiez que PHP est installé sur le serveur" );
+			Log.Error( $"[DarkDatabase] ❌ Sidecar API inaccessible sur {DarkHttpClient.BaseUrl}" );
+			Log.Error( "[DarkDatabase]    → Vérifiez que l'API Hostinger est accessible" );
 			return;
 		}
 

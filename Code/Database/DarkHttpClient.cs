@@ -9,7 +9,7 @@ namespace Sandbox;
 /// </summary>
 public static class DarkHttpClient
 {
-	const string BaseUrl = "https://cornflowerblue-dolphin-286674.hostingersite.com/darkapi";
+	public const string BaseUrl = "https://cornflowerblue-dolphin-286674.hostingersite.com/darkapi";
 
 	/// <summary>⚠️ Identique à API_KEY dans darkapi/config.php</summary>
 	public const string ApiKey = "349c7e8efdb530c7fae5b294be087d43da63fb45d827d621bb4657d07480c5a0";
@@ -30,10 +30,16 @@ public static class DarkHttpClient
 	{
 		try
 		{
+			Log.Info( $"[DarkHttpClient] Ping vers {BaseUrl}/ping ..." );
 			var resp = await Http.RequestAsync( $"{BaseUrl}/ping", "GET", null, _headers );
+			Log.Info( $"[DarkHttpClient] Réponse ping : {(resp is null ? "null" : resp.StatusCode.ToString())}" );
 			return resp is not null && resp.IsSuccessStatusCode;
 		}
-		catch { return false; }
+		catch ( Exception ex )
+		{
+			Log.Error( ex, "[DarkHttpClient] Exception lors du ping" );
+			return false;
+		}
 	}
 
 	// ── GET → désérialise le JSON en T ───────────────────────────────────
