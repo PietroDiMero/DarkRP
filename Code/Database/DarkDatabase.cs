@@ -36,14 +36,19 @@ public sealed partial class DarkDatabase : GameObjectSystem<DarkDatabase>, Compo
 
 	async Task InitAsync()
 	{
-		Log.Info( "[DarkDatabase] Connexion au sidecar API MySQL..." );
+		Log.Info( "[DarkDatabase] Démarrage du sidecar PHP MySQL..." );
 
-		// Test de connectivité avant tout
+		// Auto-démarrer le sidecar PHP si pas déjà actif
+		StartPhpSidecar();
+
+		// Laisser 3 secondes à PHP pour démarrer
+		await Task.Delay( 3000 );
+
+		// Test de connectivité
 		if ( !await DarkHttpClient.PingAsync() )
 		{
 			Log.Error( "[DarkDatabase] ❌ Sidecar API inaccessible sur http://127.0.0.1:9000" );
-			Log.Error( "[DarkDatabase]    → Vérifiez que le PHP sidecar est démarré (start.sh)" );
-			Log.Error( "[DarkDatabase]    → Commande manuelle : php -S 127.0.0.1:9000 darkapi/index.php" );
+			Log.Error( "[DarkDatabase]    → Vérifiez que PHP est installé sur le serveur" );
 			return;
 		}
 
@@ -170,6 +175,40 @@ public sealed partial class DarkDatabase : GameObjectSystem<DarkDatabase>, Compo
 		}
 
 		return $"Banni définitivement : {ban.Reason}";
+	}
+
+	// ── Démarrage automatique du sidecar PHP ───────────────────────────────
+	static void StartPhpSidecar()
+	{
+		try
+		{
+			// Ne pas en démarrer un second si déjà actif
+			var existing = System.Diagnostics.Process.GetProcessesByName( "php" );
+			if ( existing.Length > 0 )
+			{
+				Log.Info( "[DarkDatabase] Sidecar PHP déjà en cours." );
+				return;
+			}
+
+			var apiPath = "/home/container/projects/darkrp/darkapi/index.php";
+
+			var psi = new System.Diagnostics.ProcessStartInfo
+			{
+				FileName               = "php",
+				Arguments              = $"-S 127.0.0.1:9000 {apiPath}",
+				UseShellExecute        = false,
+				RedirectStandardOutput = false,
+				RedirectStandardError  = false,
+				CreateNoWindow         = true,
+			};
+
+			var proc = System.Diagnostics.Process.Start( psi );
+			Log.Info( $"[DarkDatabase] ✅ Sidecar PHP lancé (PID: {proc?.Id})" );
+		}
+		catch ( Exception ex )
+		{
+			Log.Warning( ex, "[DarkDatabase] Impossible de démarrer le sidecar PHP." );
+		}
 	}
 
 	// ── Accesseur global ────────────────────────────────────────────────────
