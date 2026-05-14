@@ -211,30 +211,34 @@ public sealed class StaffRoleAlignmentCheck : IStartupCheck
 	}
 }
 
-/// <summary>Vérifie le chargement du système de jobs.</summary>
+/// <summary>
+/// Synchronise tous les JobDefinition vers la BDD (factions auto-créées depuis les catégories).
+/// La page /jobs du panel reflète alors exactement le contenu in-game.
+/// </summary>
 public sealed class JobsLoadedCheck : IStartupCheck
 {
-	public string Name => "Système de jobs";
+	public string Name => "Sync Jobs/Factions";
 
-	public Task<StartupCheckResult> RunAsync()
+	public async Task<StartupCheckResult> RunAsync()
 	{
 		var sw = Stopwatch.StartNew();
 
-		// TODO : remplacer par la vraie référence au JobManager / JobSystem du gamemode
-		// Exemple : var count = JobSystem.Current?.Jobs.Count ?? 0;
-		var count = 0;
+		var jobs = JobDefinition.GetAll();
+		var localCount = jobs?.Count ?? 0;
 
-		// Heuristique : on tente de trouver des composants Job dans la scène
-		var allJobs = Game.ActiveScene?
-			.GetAllComponents<Component>()
-			.Count( c => c.GetType().Name.Contains( "Job" ) ) ?? 0;
+		if ( localCount == 0 )
+		{
+			sw.Stop();
+			return StartupCheckResult.Fail( Name, "Aucun JobDefinition trouvé en jeu", sw.ElapsedMilliseconds );
+		}
 
+		var synced = await JobSyncService.SyncAsync();
 		sw.Stop();
 
-		if ( allJobs == 0 )
-			return Task.FromResult( StartupCheckResult.Fail( Name, "Aucun job détecté — vérifie l'initialisation", sw.ElapsedMilliseconds ) );
+		if ( synced < 0 )
+			return StartupCheckResult.Fail( Name, $"Sync vers BDD échouée ({localCount} jobs locaux)", sw.ElapsedMilliseconds );
 
-		return Task.FromResult( StartupCheckResult.Ok( Name, $"{allJobs} composant(s) job détecté(s)", sw.ElapsedMilliseconds ) );
+		return StartupCheckResult.Ok( Name, $"{synced}/{localCount} job(s) push vers panel", sw.ElapsedMilliseconds );
 	}
 }
 
