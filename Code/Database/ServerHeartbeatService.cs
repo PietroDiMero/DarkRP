@@ -15,6 +15,15 @@ namespace Sandbox;
 /// </summary>
 public sealed class ServerHeartbeatService : Component
 {
+	public static void Ensure( Scene scene )
+	{
+		if ( scene is null ) return;
+		if ( scene.GetAllComponents<ServerHeartbeatService>().Any() ) return;
+
+		var go = new GameObject( true, "ServerHeartbeatService" );
+		go.AddComponent<ServerHeartbeatService>();
+	}
+
 	[Property, Range( 5f, 300f )]
 	public float HeartbeatIntervalSeconds { get; set; } = 30.0f;
 

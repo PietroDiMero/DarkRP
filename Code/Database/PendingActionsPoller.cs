@@ -10,6 +10,20 @@ namespace Sandbox;
 /// </summary>
 public sealed class PendingActionsPoller : Component
 {
+	/// <summary>
+	/// S'assure que le composant existe dans la scène. À appeler depuis
+	/// GameManager.OnHostInitialize pour éviter d'avoir à l'attacher manuellement
+	/// dans l'éditeur S&Box.
+	/// </summary>
+	public static void Ensure( Scene scene )
+	{
+		if ( scene is null ) return;
+		if ( scene.GetAllComponents<PendingActionsPoller>().Any() ) return;
+
+		var go = new GameObject( true, "PendingActionsPoller" );
+		go.AddComponent<PendingActionsPoller>();
+	}
+
 	[Property, Range( 1f, 30f )]
 	public float PollIntervalSeconds { get; set; } = 2.0f;
 

@@ -15,6 +15,11 @@ public sealed partial class GameManager : GameObjectSystem<GameManager>, Compone
 
 		CityLawManager.Ensure( Scene );
 		JobVoteManager.Ensure( Scene );
+
+		// Composants panel — auto-attach (pas besoin de l'éditeur S&Box)
+		StartupValidator.Ensure( Scene );
+		PendingActionsPoller.Ensure( Scene );
+		ServerHeartbeatService.Ensure( Scene );
 	}
 
 	void Component.INetworkListener.OnActive( Connection channel )

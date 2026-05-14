@@ -37,6 +37,15 @@ public interface IStartupCheck
 /// </summary>
 public sealed class StartupValidator : Component
 {
+	public static void Ensure( Scene scene )
+	{
+		if ( scene is null ) return;
+		if ( scene.GetAllComponents<StartupValidator>().Any() ) return;
+
+		var go = new GameObject( true, "StartupValidator" );
+		go.AddComponent<StartupValidator>();
+	}
+
 	[Property] public bool VerboseLogs { get; set; } = true;
 	[Property] public bool SendReportToPanel { get; set; } = true;
 
