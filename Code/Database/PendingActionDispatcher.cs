@@ -145,15 +145,34 @@ public static class PendingActionDispatcher
 	{
 		var player = FindPlayer( a.TargetSteamId );
 		var amount = (int)a.GetPayloadLong( "amount" );
+		var mode   = a.GetPayloadString( "mode" ) ?? "set"; // 'set' | 'give' | 'take'
 
-		if ( player is not null )
+		// Met à jour la BDD (DarkDatabase synchronise automatiquement le Player s'il est connecté)
+		var db = Game.ActiveScene?.GetAllComponents<DarkDatabase>().FirstOrDefault();
+		if ( db is not null )
 		{
-			// TODO: brancher sur l'économie existante
-			// player.SetMoney( amount );
+			switch ( mode )
+			{
+				case "give": db.GiveMoney( a.TargetSteamId, amount ); break;
+				case "take": db.GiveMoney( a.TargetSteamId, -amount ); break;
+				case "set":
+				default:     db.SetMoney( a.TargetSteamId, amount ); break;
+			}
+		}
+		else if ( player is not null )
+		{
+			// Fallback si DarkDatabase introuvable : ajuste juste côté Player
+			switch ( mode )
+			{
+				case "give": player.GiveMoney( amount ); break;
+				case "take": player.TryTakeMoney( amount ); break;
+				case "set":
+				default:     player.SetMoney( amount ); break;
+			}
 		}
 
 		await DarkHttpClient.LogAdminActionAsync( a.CreatedBy, a.GetPayloadString( "admin_name" ),
-			a.TargetSteamId, player?.GameObject.Name, "set_money", $"${amount}" );
+			a.TargetSteamId, player?.GameObject.Name, "set_money", $"{mode} ${amount}" );
 		return true;
 	}
 
@@ -163,11 +182,9 @@ public static class PendingActionDispatcher
 		var player = FindPlayer( a.TargetSteamId );
 		var isVip = a.GetPayloadBool( "is_vip" );
 
-		if ( player is not null )
-		{
-			// TODO: brancher sur le flag VIP existant
-			// player.IsVip = isVip;
-		}
+		// Update BDD (qui propage au Player si connecté via DarkDatabase logic)
+		var db = Game.ActiveScene?.GetAllComponents<DarkDatabase>().FirstOrDefault();
+		db?.SetVip( a.TargetSteamId, isVip );
 
 		await DarkHttpClient.LogAdminActionAsync( a.CreatedBy, a.GetPayloadString( "admin_name" ),
 			a.TargetSteamId, player?.GameObject.Name, "set_vip", isVip ? "VIP on" : "VIP off" );

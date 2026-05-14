@@ -26,6 +26,9 @@ public sealed partial class GameManager : GameObjectSystem<GameManager>, Compone
 		CheckConnectionAchievement( channel );
 		CheckFriendsOnlineStat();
 
+		// Log la session BDD (panel : page Identifiants, détection multi-comptes)
+		_ = PlayerSessionsTracker.StartAsync( channel );
+
 		Scene.Get<Chat>()?.AddSystemText( $"{channel.DisplayName} a rejoint le serveur — Bienvenue sur Pietro DarkRP !", "👋" );
 		Scene.Get<Chat>()?.AddSystemText( $"💡 Utilisez F1 pour choisir votre métier. Respectez les règles et amusez-vous bien !", null );
 	}
@@ -37,6 +40,9 @@ public sealed partial class GameManager : GameObjectSystem<GameManager>, Compone
 	{
 		Player.FindForConnection( channel )?.SaveRoleplayData();
 		CleanupSystem.CleanupPlayer( channel );
+
+		// Termine la session BDD (durée calculée, ajout aux fingerprints IP/HWID)
+		_ = PlayerSessionsTracker.EndAsync( channel );
 
 		var pd = PlayerData.For( channel );
 		if ( pd is not null )

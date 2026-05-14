@@ -77,6 +77,26 @@ public static class DarkHttpClient
 		}
 	}
 
+	// ── POST avec body JSON, retourne la réponse désérialisée ────────────
+	public static async Task<T> PostJsonAsync<T>( string path, object body ) where T : class
+	{
+		try
+		{
+			var json    = JsonSerializer.Serialize( body, _jsonOpts );
+			var content = new System.Net.Http.StringContent( json, System.Text.Encoding.UTF8, "application/json" );
+			var resp    = await Http.RequestAsync( $"{BaseUrl}/{path}", "POST", content, _headers );
+			if ( resp is null || !resp.IsSuccessStatusCode ) return null;
+
+			var respBody = await resp.Content.ReadAsStringAsync();
+			return JsonSerializer.Deserialize<T>( respBody, _jsonOpts );
+		}
+		catch ( Exception ex )
+		{
+			Log.Warning( ex, $"[DarkHttpClient] POST {path} echoue." );
+			return null;
+		}
+	}
+
 	// ── PATCH avec body JSON ──────────────────────────────────────────────
 	public static async Task<bool> PatchAsync( string path, object body )
 	{
@@ -118,9 +138,19 @@ public static class DarkHttpClient
 			details,
 		} );
 
-	/// <summary>Démarre une session de connexion joueur (à l'arrivée du joueur).</summary>
-	public static Task<bool> StartSessionAsync( long steamId, string ip, string hwid = null, string countryCode = null, string countryName = null, string city = null )
-		=> PostAsync( "sessions/start", new
+	/// <summary>Classe de réponse pour StartSession.</summary>
+	public sealed class StartSessionResult
+	{
+		[System.Text.Json.Serialization.JsonPropertyName( "status" )]
+		public string Status { get; set; }
+
+		[System.Text.Json.Serialization.JsonPropertyName( "session_id" )]
+		public int SessionId { get; set; }
+	}
+
+	/// <summary>Démarre une session de connexion joueur (à l'arrivée du joueur). Retourne le session_id.</summary>
+	public static Task<StartSessionResult> StartSessionAsync( long steamId, string ip, string hwid = null, string countryCode = null, string countryName = null, string city = null )
+		=> PostJsonAsync<StartSessionResult>( "sessions/start", new
 		{
 			steam_id     = steamId,
 			ip,
