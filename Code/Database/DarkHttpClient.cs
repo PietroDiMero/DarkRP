@@ -9,7 +9,7 @@ namespace Sandbox;
 /// </summary>
 public static class DarkHttpClient
 {
-	public const string BaseUrl = "https://cornflowerblue-dolphin-286674.hostingersite.com/darkapi";
+	public const string BaseUrl = "https://darkrp-pietro.duckdns.org/api";
 
 	/// <summary>⚠️ Identique à API_KEY dans darkapi/config.php</summary>
 	public const string ApiKey = "349c7e8efdb530c7fae5b294be087d43da63fb45d827d621bb4657d07480c5a0";
@@ -93,4 +93,44 @@ public static class DarkHttpClient
 			return false;
 		}
 	}
+
+	// ────────────────────────────────────────────────────────────────────
+	//  Helpers spécifiques pour les actions panel ↔ jeu
+	// ────────────────────────────────────────────────────────────────────
+
+	/// <summary>Récupère les actions en attente d'exécution (non encore traitées).</summary>
+	public static Task<PendingAction[]> GetUnprocessedActionsAsync()
+		=> GetAsync<PendingAction[]>( "pending_actions/unprocessed" );
+
+	/// <summary>Marque une action comme exécutée côté serveur.</summary>
+	public static Task<bool> MarkActionProcessedAsync( int actionId, string result = "ok" )
+		=> PatchAsync( $"pending_actions/{actionId}/processed", new { result } );
+
+	/// <summary>Log une action staff in-game pour qu'elle apparaisse dans /logs du panel.</summary>
+	public static Task<bool> LogAdminActionAsync( long adminSteamId, string adminName, long? targetSteamId, string targetName, string action, string details )
+		=> PostAsync( "logs", new
+		{
+			admin_steam_id  = adminSteamId,
+			admin_name      = adminName,
+			target_steam_id = targetSteamId,
+			target_name     = targetName,
+			action,
+			details,
+		} );
+
+	/// <summary>Démarre une session de connexion joueur (à l'arrivée du joueur).</summary>
+	public static Task<bool> StartSessionAsync( long steamId, string ip, string hwid = null, string countryCode = null, string countryName = null, string city = null )
+		=> PostAsync( "sessions/start", new
+		{
+			steam_id     = steamId,
+			ip,
+			hwid,
+			country_code = countryCode,
+			country_name = countryName,
+			city,
+		} );
+
+	/// <summary>Termine une session de connexion joueur (au départ).</summary>
+	public static Task<bool> EndSessionAsync( int sessionId )
+		=> PatchAsync( $"sessions/{sessionId}/end", new { } );
 }
