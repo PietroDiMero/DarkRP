@@ -25,17 +25,18 @@ public static class PendingActionDispatcher
 		{
 			return action.Action switch
 			{
-				"kick"      => await HandleKickAsync( action ),
-				"ban"       => await HandleBanAsync( action ),
-				"unban"     => await HandleUnbanAsync( action ),
-				"jail"      => await HandleJailAsync( action ),
-				"warn"      => await HandleWarnAsync( action ),
-				"set_money" => await HandleSetMoneyAsync( action ),
-				"set_vip"   => await HandleSetVipAsync( action ),
-				"set_role"  => await HandleSetRoleAsync( action ),
-				"teleport"  => await HandleTeleportAsync( action ),
-				"announce"  => await HandleAnnounceAsync( action ),
-				_           => HandleUnknown( action ),
+				"kick"         => await HandleKickAsync( action ),
+				"ban"          => await HandleBanAsync( action ),
+				"unban"        => await HandleUnbanAsync( action ),
+				"jail"         => await HandleJailAsync( action ),
+				"warn"         => await HandleWarnAsync( action ),
+				"set_money"    => await HandleSetMoneyAsync( action ),
+				"set_vip"      => await HandleSetVipAsync( action ),
+				"set_role"     => await HandleSetRoleAsync( action ),
+				"teleport"     => await HandleTeleportAsync( action ),
+				"announce"     => await HandleAnnounceAsync( action ),
+				"refresh_jobs" => await HandleRefreshJobsAsync( action ),
+				_              => HandleUnknown( action ),
 			};
 		}
 		catch ( System.Exception ex )
@@ -274,6 +275,22 @@ public static class PendingActionDispatcher
 		await DarkHttpClient.LogAdminActionAsync( a.CreatedBy, a.GetPayloadString( "admin_name" ),
 			a.TargetSteamId, player.GameObject.Name, "teleport", detail );
 		return success;
+	}
+
+	// ═════════════════════════════════════════════════════════════ REFRESH JOBS
+	// Déclenché par le panel quand un admin sauve une modification de job.
+	// Refetch les overrides BDD et les applique aux JobDefinition en mémoire.
+	private static async Task<bool> HandleRefreshJobsAsync( PendingAction a )
+	{
+		var count = await JobSyncService.RefreshOverridesAsync();
+		if ( count < 0 )
+		{
+			Log.Warning( "[RefreshJobs] Échec du refresh." );
+			return false;
+		}
+
+		Log.Info( $"[RefreshJobs] {count} job(s) actualisé(s) depuis le panel." );
+		return true;
 	}
 
 	// ═════════════════════════════════════════════════════════════ ANNONCE
