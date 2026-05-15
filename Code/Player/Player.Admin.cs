@@ -46,6 +46,23 @@ public sealed partial class Player
 		Notices.SendNotice( Rpc.Caller, "gavel", Color.Green, $"{connection.DisplayName} was banned.", 3 );
 	}
 
+	/// <summary>
+	/// Téléporte le joueur (côté host uniquement). Utilisé par les actions panel.
+	/// </summary>
+	public void ServerTeleport( Vector3 position, Rotation? rotation = null )
+	{
+		if ( !Networking.IsHost ) return;
+		ApplyPlayerTeleport( new Transform( position, rotation ?? Rotation.Identity ) );
+	}
+
+	/// <summary>Téléporte ce joueur à la position d'un autre joueur connecté.</summary>
+	public bool ServerTeleportToPlayer( Player target )
+	{
+		if ( !Networking.IsHost || target is null || !target.GameObject.IsValid() ) return false;
+		ServerTeleport( target.WorldPosition, target.WorldRotation );
+		return true;
+	}
+
 	[Rpc.Host]
 	public void RequestSetAdminRole( long steamId, AdminRole role )
 	{

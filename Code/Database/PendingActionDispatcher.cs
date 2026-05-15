@@ -104,22 +104,33 @@ public static class PendingActionDispatcher
 		return true;
 	}
 
-	// ═════════════════════════════════════════════════════════════ JAIL
+	// ═════════════════════════════════════════════════════════════ JAIL / UNJAIL
 	private static async Task<bool> HandleJailAsync( PendingAction a )
 	{
 		var player = FindPlayer( a.TargetSteamId );
 		if ( player is null )
 		{
-			Log.Info( $"[Jail] Joueur {a.TargetSteamId} non connecté, jail différé." );
-			return true;
+			Log.Info( $"[Jail] Joueur {a.TargetSteamId} non connecté, jail ignoré." );
+			return true; // pas d'erreur — sera persisté en BDD quand le joueur revient
 		}
 
-		// TODO: brancher sur la mécanique de jail existante (Player.Law.cs ?)
-		// var minutes = (int)a.GetPayloadLong( "minutes" );
-		// player.Jail( minutes, a.GetPayloadString( "reason" ) );
+		var release = a.GetPayloadBool( "release" );
+		var reason  = a.GetPayloadString( "reason" ) ?? "Arrest par admin";
+
+		if ( release )
+		{
+			player.ReleaseFromArrest();
+		}
+		else
+		{
+			// BeginArrest accepte officer = null (le système dit "arrêté par the law")
+			player.BeginArrest( null );
+		}
 
 		await DarkHttpClient.LogAdminActionAsync( a.CreatedBy, a.GetPayloadString( "admin_name" ),
-			a.TargetSteamId, player.GameObject.Name, "jail", a.GetPayloadString( "reason" ) );
+			a.TargetSteamId, player.GameObject.Name,
+			release ? "release" : "jail",
+			reason );
 		return true;
 	}
 
@@ -210,17 +221,59 @@ public static class PendingActionDispatcher
 	}
 
 	// ═════════════════════════════════════════════════════════════ TELEPORT
+	// Payload supporté :
+	//   { "destination": "spawn" }                    → TP au spawn
+	//   { "destination": "player", "steam_id": 765... } → TP vers un autre joueur
+	//   { "destination": "coords", "x":0,"y":0,"z":0 } → TP coordonnées brutes
 	private static async Task<bool> HandleTeleportAsync( PendingAction a )
 	{
 		var player = FindPlayer( a.TargetSteamId );
-		if ( player is null ) return true;
+		if ( player is null )
+		{
+			Log.Info( $"[Teleport] Joueur {a.TargetSteamId} non connecté." );
+			return true;
+		}
 
-		// TODO: brancher sur la mécanique de TP existante
-		// var target = a.GetPayloadString( "destination" );
+		var dest = a.GetPayloadString( "destination" ) ?? "spawn";
+		var success = false;
+		var detail  = dest;
+
+		switch ( dest )
+		{
+			case "spawn":
+				var spawn = GameManager.Current?.FindSpawnLocation();
+				if ( spawn.HasValue )
+				{
+					player.ServerTeleport( spawn.Value.Position, spawn.Value.Rotation );
+					success = true;
+				}
+				break;
+
+			case "player":
+				var targetSid = a.GetPayloadLong( "steam_id" );
+				var dst = FindPlayer( targetSid );
+				if ( dst is not null )
+				{
+					success = player.ServerTeleportToPlayer( dst );
+					detail  = $"vers {dst.GameObject.Name}";
+				}
+				break;
+
+			case "coords":
+				var pos = new Vector3(
+					(float) a.GetPayloadLong( "x" ),
+					(float) a.GetPayloadLong( "y" ),
+					(float) a.GetPayloadLong( "z" )
+				);
+				player.ServerTeleport( pos );
+				success = true;
+				detail = $"({pos.x:0},{pos.y:0},{pos.z:0})";
+				break;
+		}
 
 		await DarkHttpClient.LogAdminActionAsync( a.CreatedBy, a.GetPayloadString( "admin_name" ),
-			a.TargetSteamId, player.GameObject.Name, "teleport", a.GetPayloadString( "destination" ) );
-		return true;
+			a.TargetSteamId, player.GameObject.Name, "teleport", detail );
+		return success;
 	}
 
 	// ═════════════════════════════════════════════════════════════ ANNONCE
