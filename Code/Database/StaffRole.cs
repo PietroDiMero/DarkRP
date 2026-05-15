@@ -52,6 +52,12 @@ public static class StaffRoleExtensions
 	};
 
 	public static bool HasPanelAccess( this StaffRole role ) => role >= StaffRole.Support;
+
+	// ── Aliases legacy utilisés par le code existant (AdminPanel.razor.cs, DarkDatabase.Roles.cs) ──
+	public static bool CanModerate( this StaffRole role )  => role >= StaffRole.SubModerator;
+	public static bool CanTempBan( this StaffRole role )   => role >= StaffRole.Moderator;
+	public static bool CanAdmin( this StaffRole role )     => role >= StaffRole.Admin;
+	public static bool IsFounder( this StaffRole role )    => role >= StaffRole.Founder;
 }
 
 /// <summary>

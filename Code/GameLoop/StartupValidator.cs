@@ -210,8 +210,8 @@ public sealed class StaffRoleAlignmentCheck : IStartupCheck
 		if ( players is null )
 			return StartupCheckResult.Fail( Name, "Impossible de charger les joueurs", sw.ElapsedMilliseconds );
 
-		var founders = players.Count( p => p.StaffRole >= (int)StaffRole.Founder );
-		var staff    = players.Count( p => p.StaffRole >= (int)StaffRole.Support );
+		var founders = players.Count( p => p.StaffRole >= StaffRole.Founder );
+		var staff    = players.Count( p => p.StaffRole >= StaffRole.Support );
 
 		if ( founders == 0 )
 			return StartupCheckResult.Fail( Name, $"⚠ Aucun Fondateur configuré ! ({staff} staff au total)", sw.ElapsedMilliseconds );
