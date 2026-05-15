@@ -117,12 +117,19 @@ public static class ChatCommandSystem
 		new( "pm", "/pm <player> <message>", "Send a private message.", PrivateMessageCommand, aliases: ["msg", "tell", "w"] ),
 		new( "dropmoney", "/dropmoney <amount>", "Drop money in front of you.", DropMoneyCommand, aliases: ["dropcash"] ),
 		new( "name", "/name <rp name>", "Change your roleplay name.", NameCommand, aliases: ["rpname", "nick"] ),
-		new( "kick", "/kick <player> [reason]", "Kick a player.", KickCommand, ChatCommandAccess.Admin, accessText: "admin" ),
+		new( "kick", "/kick <player> <reason>", "Kicker un joueur du serveur.", KickCommand, ChatCommandAccess.Admin, accessText: "modo" ),
 		new( "ban", "/ban <player|steamid> [reason]", "Ban a player.", BanCommand, ChatCommandAccess.SuperAdmin, accessText: "superadmin" ),
 		new( "unban", "/unban <steamid>", "Remove a SteamID ban.", UnbanCommand, ChatCommandAccess.SuperAdmin, accessText: "superadmin" ),
 		new( "setadmin", "/setadmin <player> <none|admin|superadmin>", "Change a player's staff role.", SetAdminCommand, ChatCommandAccess.SuperAdmin, accessText: "superadmin" ),
 		new( "givemoney", "/givemoney <player> <amount>", "Give money to a player.", GiveMoneyCommand, ChatCommandAccess.Admin, accessText: "admin" ),
-		new( "setmoney", "/setmoney <player> <amount>", "Set a player's money.", SetMoneyCommand, ChatCommandAccess.Admin, accessText: "admin" )
+		new( "setmoney", "/setmoney <player> <amount>", "Set a player's money.", SetMoneyCommand, ChatCommandAccess.Admin, accessText: "admin" ),
+
+		// ── Commandes panel ─────────────────────────────────────────────
+		new( "report", "/report <message>", "Signaler un problème au staff (envoyé sur le panel web).", ReportCommand ),
+		new( "warn", "/warn <player> <reason>", "Avertir un joueur (apparaît dans son casier).", WarnCommand, ChatCommandAccess.Admin, accessText: "modo" ),
+		new( "jail", "/jail <player> <minutes> <reason>", "Mettre un joueur en jail pour une durée donnée.", JailCommand, ChatCommandAccess.Admin, accessText: "supermodo" ),
+		new( "tpto", "/tpto <player>", "Te téléporter à un joueur.", TptoCommand, ChatCommandAccess.Admin, accessText: "modo", aliases: ["goto"] ),
+		new( "bring", "/bring <player>", "Téléporter un joueur vers toi.", BringCommand, ChatCommandAccess.Admin, accessText: "modo" )
 	];
 
 	public static IReadOnlyList<string> TokenizeArguments( string argumentsText )
@@ -192,10 +199,75 @@ public static class ChatCommandSystem
 		if ( !HasCommandPreviewQuery( input ) )
 			return [];
 
-		if ( !TryParseCommand( input, out var commandName, out _ ) )
+		if ( !TryParseCommand( input, out var commandName, out var argumentsText ) )
 			return [];
 
+		// Si la commande est complète et attend un joueur, on suggère les noms en ligne
+		// (détection : il y a un espace dans l'input ET la commande existe ET prend un player)
+		if ( input.Contains( ' ' ) && CommandTakesPlayer( commandName ) )
+		{
+			var command = FindStaticCommand( commandName );
+			if ( command is not null && CanUseCommand( player, command ) )
+			{
+				return BuildPlayerArgPreviews( player, command, argumentsText, MaxSuggestions );
+			}
+		}
+
 		return BuildVisiblePreviews( player, commandName, MaxSuggestions );
+	}
+
+	/// <summary>Liste blanche des commandes qui acceptent un nom de joueur en 1er argument.</summary>
+	static bool CommandTakesPlayer( string commandName )
+	{
+		return commandName switch
+		{
+			"kick" or "ban" or "warn" or "jail" or "tpto" or "goto" or "bring"
+				or "pm" or "msg" or "tell" or "w"
+				or "givemoney" or "setmoney" or "setadmin" => true,
+			_ => false,
+		};
+	}
+
+	/// <summary>Suggère les joueurs connectés correspondant au début du 1er argument.</summary>
+	static IReadOnlyList<ChatCommandPreview> BuildPlayerArgPreviews(
+		Player caller, ChatCommandDefinition command, string args, int limit )
+	{
+		var partial = (args ?? "").Split( ' ' ).FirstOrDefault() ?? "";
+
+		var players = Game.ActiveScene?.GetAll<Player>()
+			.Where( p => p.IsValid() && p.Network.Owner is not null && p != caller )
+			.ToArray() ?? [];
+
+		var matches = string.IsNullOrEmpty( partial )
+			? players
+			: players.Where( p => p.DisplayName.Contains( partial, StringComparison.OrdinalIgnoreCase ) ).ToArray();
+
+		// Indice sur les args restants (raison, montant…)
+		var remainingHint = "";
+		var usage = command.Usage;
+		var firstArgEnd = usage.IndexOf( '>' );
+		if ( firstArgEnd > 0 && firstArgEnd + 1 < usage.Length )
+		{
+			remainingHint = usage[(firstArgEnd + 1)..].Trim();
+		}
+
+		var previews = matches
+			.Take( limit )
+			.Select( p =>
+			{
+				var hint = $"/{command.Name} {p.DisplayName}";
+				if ( !string.IsNullOrWhiteSpace( remainingHint ) ) hint += " " + remainingHint;
+				return new ChatCommandPreview( hint, command.Description, GetAccessText( command ) );
+			} )
+			.ToArray();
+
+		// Si aucun joueur ne match, on retombe sur l'usage générique
+		if ( previews.Length == 0 )
+		{
+			return [new ChatCommandPreview( command.Usage, command.Description, GetAccessText( command ) )];
+		}
+
+		return previews;
 	}
 
 	static bool HasCommandPreviewQuery( string input )
@@ -624,5 +696,159 @@ public static class ChatCommandSystem
 
 		target.SetMoney( amount );
 		Notices.SendNotice( context.Connection, "$", Color.Green, $"{target.DisplayName} now has ${amount:n0}.", 3 );
+	}
+
+	// ════════════════════════════════════════════════════════════════
+	//  Commandes panel — /report /warn /jail /tpto /bring
+	// ════════════════════════════════════════════════════════════════
+
+	/// <summary>/report &lt;message&gt; — n'importe quel joueur envoie un signalement au staff (panel).</summary>
+	static void ReportCommand( ChatCommandContext context )
+	{
+		if ( string.IsNullOrWhiteSpace( context.ArgumentsText ) )
+		{
+			context.Reply( "Usage : /report <message>", "!" );
+			return;
+		}
+
+		var message = context.ArgumentsText.Trim();
+		if ( message.Length < 3 )
+		{
+			context.Reply( "Message trop court (3 caractères minimum).", "!" );
+			return;
+		}
+		if ( message.Length > 500 ) message = message[..500];
+
+		var reporterSid = (long) context.Connection.SteamId.Value;
+
+		// Fire-and-forget POST vers darkapi
+		_ = DarkHttpClient.PostAsync( "reports", new
+		{
+			reporter_steam_id = reporterSid,
+			target_steam_id   = reporterSid, // self-report : le message décrit le contexte, staff lira
+			reason            = message,
+		} );
+
+		// Log dans admin_logs aussi
+		_ = DarkHttpClient.LogAdminActionAsync(
+			reporterSid, context.Player?.DisplayName ?? context.Connection.DisplayName,
+			null, null, "report", message );
+
+		context.Reply( "✓ Report envoyé au staff. Merci !", "📨" );
+	}
+
+	/// <summary>/warn &lt;player&gt; &lt;reason&gt; — incrément compteur warn + log staff.</summary>
+	static void WarnCommand( ChatCommandContext context )
+	{
+		if ( !TryReadPlayerAndRest( context, out var target, out var reason ) ) return;
+		if ( string.IsNullOrWhiteSpace( reason ) || reason.Length < 3 )
+		{
+			context.Reply( "Usage : /warn <player> <reason>", "!" );
+			return;
+		}
+		if ( reason.Length > 500 ) reason = reason[..500];
+
+		var adminSid = (long) context.Connection.SteamId.Value;
+		var adminName = context.Player?.DisplayName ?? context.Connection.DisplayName;
+
+		// POST /warnings côté darkapi (insère + incrémente players.warnings)
+		_ = DarkHttpClient.PostAsync( "warnings", new
+		{
+			steam_id       = (long) target.SteamId,
+			reason,
+			admin_steam_id = adminSid,
+			admin_name     = adminName,
+		} );
+
+		_ = DarkHttpClient.LogAdminActionAsync(
+			adminSid, adminName, (long) target.SteamId, target.DisplayName, "warn", reason );
+
+		Notices.SendNotice( target.Network.Owner, "warning", Color.Yellow,
+			$"⚠ Avertissement : {reason}", 6 );
+		Notices.SendNotice( context.Connection, "warning", Color.Green,
+			$"{target.DisplayName} averti.", 3 );
+	}
+
+	/// <summary>/jail &lt;player&gt; &lt;minutes&gt; &lt;reason&gt; — arrest temporaire.</summary>
+	static void JailCommand( ChatCommandContext context )
+	{
+		if ( !TryReadPlayerAndRest( context, out var target, out var rest ) ) return;
+		if ( !SplitFirst( rest, out var minutesText, out var reason )
+			|| !TryParsePositiveInt( minutesText, out var minutes )
+			|| string.IsNullOrWhiteSpace( reason )
+			|| reason.Length < 3 )
+		{
+			context.Reply( "Usage : /jail <player> <minutes> <reason>", "!" );
+			return;
+		}
+		if ( reason.Length > 500 ) reason = reason[..500];
+
+		// BeginArrest avec officer = null (admin)
+		target.BeginArrest( null );
+
+		var adminSid = (long) context.Connection.SteamId.Value;
+		_ = DarkHttpClient.LogAdminActionAsync(
+			adminSid, context.Player?.DisplayName ?? context.Connection.DisplayName,
+			(long) target.SteamId, target.DisplayName,
+			"jail", $"{minutes}min · {reason}" );
+
+		Notices.SendNotice( context.Connection, "gavel", Color.Green,
+			$"{target.DisplayName} jailed pour {minutes}min.", 3 );
+	}
+
+	/// <summary>/tpto &lt;player&gt; — téléporte le caller vers la cible.</summary>
+	static void TptoCommand( ChatCommandContext context )
+	{
+		if ( !TryReadPlayerAndRest( context, out var target, out _ ) ) return;
+		if ( !context.Player.IsValid() )
+		{
+			context.Reply( "Tu dois être en jeu pour utiliser /tpto.", "!" );
+			return;
+		}
+
+		var ok = context.Player.ServerTeleportToPlayer( target );
+		if ( !ok )
+		{
+			context.Reply( "Téléportation impossible.", "!" );
+			return;
+		}
+
+		var adminSid = (long) context.Connection.SteamId.Value;
+		_ = DarkHttpClient.LogAdminActionAsync(
+			adminSid, context.Player.DisplayName,
+			(long) target.SteamId, target.DisplayName,
+			"teleport", $"tpto {target.DisplayName}" );
+
+		Notices.SendNotice( context.Connection, "person_pin", Color.Green,
+			$"Téléporté vers {target.DisplayName}.", 2 );
+	}
+
+	/// <summary>/bring &lt;player&gt; — téléporte la cible vers le caller.</summary>
+	static void BringCommand( ChatCommandContext context )
+	{
+		if ( !TryReadPlayerAndRest( context, out var target, out _ ) ) return;
+		if ( !context.Player.IsValid() )
+		{
+			context.Reply( "Tu dois être en jeu pour utiliser /bring.", "!" );
+			return;
+		}
+
+		var ok = target.ServerTeleportToPlayer( context.Player );
+		if ( !ok )
+		{
+			context.Reply( "Téléportation impossible.", "!" );
+			return;
+		}
+
+		var adminSid = (long) context.Connection.SteamId.Value;
+		_ = DarkHttpClient.LogAdminActionAsync(
+			adminSid, context.Player.DisplayName,
+			(long) target.SteamId, target.DisplayName,
+			"teleport", $"bring {target.DisplayName}" );
+
+		Notices.SendNotice( context.Connection, "person_pin", Color.Green,
+			$"{target.DisplayName} amené à toi.", 2 );
+		Notices.SendNotice( target.Network.Owner, "person_pin", Color.Yellow,
+			$"Tu as été téléporté par {context.Player.DisplayName}.", 3 );
 	}
 }
