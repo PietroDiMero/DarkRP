@@ -119,8 +119,7 @@ public static class ChatCommandSystem
 		new( "name", "/name <rp name>", "Change your roleplay name.", NameCommand, aliases: ["rpname", "nick"] ),
 		new( "kick", "/kick <player> <reason>", "Kicker un joueur du serveur.", KickCommand,
 			canUse: p => p?.StaffRole >= StaffRole.SubModerator, accessText: "sub-modo+" ),
-		new( "ban", "/ban <player|steamid> [reason]", "Ban a player.", BanCommand, ChatCommandAccess.SuperAdmin, accessText: "superadmin" ),
-		new( "unban", "/unban <steamid>", "Remove a SteamID ban.", UnbanCommand, ChatCommandAccess.SuperAdmin, accessText: "superadmin" ),
+		// /ban et /unban retirés : uniquement via le panel web (/bans).
 		new( "setadmin", "/setadmin <player> <none|admin|superadmin>", "Change a player's staff role.", SetAdminCommand, ChatCommandAccess.SuperAdmin, accessText: "superadmin" ),
 		new( "givemoney", "/givemoney <player> <amount>", "Give money to a player.", GiveMoneyCommand, ChatCommandAccess.Admin, accessText: "admin" ),
 		new( "setmoney", "/setmoney <player> <amount>", "Set a player's money.", SetMoneyCommand, ChatCommandAccess.Admin, accessText: "admin" ),
@@ -230,7 +229,7 @@ public static class ChatCommandSystem
 	{
 		return commandName switch
 		{
-			"kick" or "ban" or "warn" or "jail" or "tpto" or "goto" or "bring"
+			"kick" or "warn" or "jail" or "tpto" or "goto" or "bring"
 				or "pm" or "msg" or "tell" or "w"
 				or "givemoney" or "setmoney" or "setadmin" => true,
 			_ => false,
