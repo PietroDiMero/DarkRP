@@ -5,6 +5,14 @@ public sealed partial class Player
 	[Property, Sync( SyncFlags.FromHost )]
 	public AdminRole AdminRole { get; private set; } = AdminRole.None;
 
+	/// <summary>
+	/// Rôle staff fin (6 niveaux) — synchronisé depuis players.staff_role en BDD.
+	/// Permet aux commandes chat de check Support, SubModerator, Moderator, etc.
+	/// distinctement (alors qu'AdminRole ne distingue que None/Admin/SuperAdmin).
+	/// </summary>
+	[Property, Sync( SyncFlags.FromHost )]
+	public StaffRole StaffRole { get; private set; } = StaffRole.Player;
+
 	public bool HasAdminAccess => (Network.Owner?.IsHost ?? false) || AdminRole >= AdminRole.Admin;
 	public bool HasSuperAdminAccess => (Network.Owner?.IsHost ?? false) || AdminRole >= AdminRole.SuperAdmin;
 
@@ -14,6 +22,16 @@ public sealed partial class Player
 			return;
 
 		AdminRole = role;
+	}
+
+	/// <summary>Définit le rôle staff fin + synchronise le AdminRole legacy.</summary>
+	public void SetStaffRole( StaffRole role )
+	{
+		if ( !Networking.IsHost )
+			return;
+
+		StaffRole = role;
+		AdminRole = role.ToAdminRole();
 	}
 
 	[Rpc.Host]

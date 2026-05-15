@@ -66,7 +66,7 @@ public sealed partial class DarkDatabase
 			var player = Player.FindForConnection( conn );
 			if ( !player.IsValid() ) continue;
 
-			player.SetAdminRole( adminRole );
+			player.SetStaffRole( record.StaffRole ); // fixe StaffRole (fin) ET AdminRole (legacy)
 			player.SetMoney( record.Money );
 
 			Log.Info( $"[DarkDatabase] ✅ Sync {conn.DisplayName} — " +

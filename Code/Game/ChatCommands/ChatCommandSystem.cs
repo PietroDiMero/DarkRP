@@ -117,7 +117,8 @@ public static class ChatCommandSystem
 		new( "pm", "/pm <player> <message>", "Send a private message.", PrivateMessageCommand, aliases: ["msg", "tell", "w"] ),
 		new( "dropmoney", "/dropmoney <amount>", "Drop money in front of you.", DropMoneyCommand, aliases: ["dropcash"] ),
 		new( "name", "/name <rp name>", "Change your roleplay name.", NameCommand, aliases: ["rpname", "nick"] ),
-		new( "kick", "/kick <player> <reason>", "Kicker un joueur du serveur.", KickCommand, ChatCommandAccess.Admin, accessText: "modo" ),
+		new( "kick", "/kick <player> <reason>", "Kicker un joueur du serveur.", KickCommand,
+			canUse: p => p?.StaffRole >= StaffRole.SubModerator, accessText: "sub-modo+" ),
 		new( "ban", "/ban <player|steamid> [reason]", "Ban a player.", BanCommand, ChatCommandAccess.SuperAdmin, accessText: "superadmin" ),
 		new( "unban", "/unban <steamid>", "Remove a SteamID ban.", UnbanCommand, ChatCommandAccess.SuperAdmin, accessText: "superadmin" ),
 		new( "setadmin", "/setadmin <player> <none|admin|superadmin>", "Change a player's staff role.", SetAdminCommand, ChatCommandAccess.SuperAdmin, accessText: "superadmin" ),
@@ -126,10 +127,18 @@ public static class ChatCommandSystem
 
 		// ── Commandes panel ─────────────────────────────────────────────
 		new( "report", "/report <message>", "Signaler un problème au staff (envoyé sur le panel web).", ReportCommand ),
-		new( "warn", "/warn <player> <reason>", "Avertir un joueur (apparaît dans son casier).", WarnCommand, ChatCommandAccess.Admin, accessText: "modo" ),
-		new( "jail", "/jail <player> <minutes> <reason>", "Mettre un joueur en jail pour une durée donnée.", JailCommand, ChatCommandAccess.Admin, accessText: "supermodo" ),
-		new( "tpto", "/tpto <player>", "Te téléporter à un joueur.", TptoCommand, ChatCommandAccess.Admin, accessText: "modo", aliases: ["goto"] ),
-		new( "bring", "/bring <player>", "Téléporter un joueur vers toi.", BringCommand, ChatCommandAccess.Admin, accessText: "modo" )
+
+		new( "warn", "/warn <player> <reason>", "Avertir un joueur (apparaît dans son casier).", WarnCommand,
+			canUse: p => p?.StaffRole >= StaffRole.SubModerator, accessText: "sub-modo+" ),
+
+		new( "jail", "/jail <player> <minutes> <reason>", "Mettre un joueur en jail.", JailCommand,
+			canUse: p => p?.StaffRole >= StaffRole.SubModerator, accessText: "sub-modo+" ),
+
+		new( "tpto", "/tpto <player>", "Te téléporter à un joueur.", TptoCommand,
+			canUse: p => p?.StaffRole >= StaffRole.Support, accessText: "staff", aliases: ["goto"] ),
+
+		new( "bring", "/bring <player>", "Téléporter un joueur vers toi.", BringCommand,
+			canUse: p => p?.StaffRole >= StaffRole.Support, accessText: "staff" )
 	];
 
 	public static IReadOnlyList<string> TokenizeArguments( string argumentsText )
