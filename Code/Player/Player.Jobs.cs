@@ -105,8 +105,23 @@ public sealed partial class Player
 			return;
 		}
 
+		// Job whitelisté : si le joueur est admin-approved (cf Player.Whitelists), on bypass
+		// le vote populaire et on assigne directement. Le check WL a déjà été fait par CanJoin.
+		// Sinon (fallback historique), on déclenche un vote populaire via JobVoteManager.
 		if ( definition.RequiresVote )
 		{
+			if ( HasWhitelistFor( definition ) )
+			{
+				// Admin-approved → SetJob direct
+				SetJobDefinition( definition );
+				_timeSinceJobChange = 0;
+				_ = ApplyJobDefinitionAsync( definition, true );
+				Notices.SendNotice( Network.Owner, "how_to_vote", Color.Green,
+					$"Tu es {definition.Title}.", 3 );
+				return;
+			}
+
+			// Pas WL — fallback vote populaire (legacy, plupart des jobs WL n'utilisent plus ça)
 			var manager = JobVoteManager.Current ?? JobVoteManager.Ensure( Scene );
 			string voteReason = null;
 			if ( manager is null || !manager.TryStartVote( this, definition, out voteReason ) )

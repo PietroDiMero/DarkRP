@@ -143,7 +143,10 @@ public static class ChatCommandSystem
 		new( "candidate", "/candidate <programme>", "Se présenter aux élections du maire (pendant la phase candidatures).", CandidateCommand ),
 		new( "vote", "/vote <numéro>", "Voter pour un candidat aux élections (pendant la phase vote).", VoteCommand ),
 		new( "election", "/election [start]", "Forcer le démarrage d'une élection du maire.", ElectionCommand,
-			canUse: p => p?.StaffRole >= StaffRole.Admin, accessText: "admin" )
+			canUse: p => p?.StaffRole >= StaffRole.Admin, accessText: "admin" ),
+
+		// ── Whitelist ───────────────────────────────────────────────────
+		new( "wl-apply", "/wl-apply <job_code> <motivation>", "Postuler pour un job whitelisté (validé par le staff).", WhitelistApplyCommand, aliases: ["wl", "wlapply"] )
 	];
 
 	public static IReadOnlyList<string> TokenizeArguments( string argumentsText )
@@ -954,5 +957,89 @@ public static class ChatCommandSystem
 			started ? "✓ Élection lancée." : "Échec : une élection est peut-être déjà en cours.",
 			started ? "🗳️" : "!"
 		);
+	}
+
+	// ════════════════════════════════════════════════════════════════════
+	//  WHITELIST
+	// ════════════════════════════════════════════════════════════════════
+
+	/// <summary>/wl-apply &lt;job_code&gt; &lt;motivation&gt; — soumet une candidature WL au staff.</summary>
+	static void WhitelistApplyCommand( ChatCommandContext context )
+	{
+		if ( !context.Player.IsValid() )
+		{
+			context.Reply( "Tu dois être en jeu pour postuler à une whitelist.", "!" );
+			return;
+		}
+
+		if ( context.Arguments.Count < 1 )
+		{
+			context.Reply( "Usage : /wl-apply <job_code> <motivation>", "!" );
+			return;
+		}
+
+		var jobCode = context.Arguments[0];
+
+		// Vérifie que le job existe et qu'il est WL
+		var allJobs = JobDefinition.GetAll();
+		var def = allJobs.FirstOrDefault( j =>
+			string.Equals( j.ResourcePath, jobCode, StringComparison.OrdinalIgnoreCase )
+			|| string.Equals( j.ResourceName, jobCode, StringComparison.OrdinalIgnoreCase )
+		);
+		if ( def is null )
+		{
+			context.Reply( $"Job '{jobCode}' introuvable. Tape /jobs pour voir la liste.", "!" );
+			return;
+		}
+		if ( !def.RequiresVote )
+		{
+			context.Reply( $"Le job '{def.Title}' n'est pas whitelisté — tu peux le prendre directement.", "!" );
+			return;
+		}
+		if ( context.Player.HasWhitelistFor( def ) )
+		{
+			context.Reply( $"Tu as déjà la whitelist pour {def.Title}.", "!" );
+			return;
+		}
+
+		// Motivation = tout ce qui suit le job_code
+		var motivation = string.Join( " ", context.Arguments.Skip( 1 ) ).Trim();
+		if ( motivation.Length < 10 )
+		{
+			context.Reply( "Motivation trop courte (10 caractères minimum).", "!" );
+			return;
+		}
+		if ( motivation.Length > 1000 ) motivation = motivation[..1000];
+
+		_ = HandleWhitelistApplyAsync( context, def, motivation );
+	}
+
+	static async Task HandleWhitelistApplyAsync( ChatCommandContext context, JobDefinition def, string motivation )
+	{
+		var sid = (long) context.Connection.SteamId.Value;
+
+		// Le code attendu côté panel correspond à `jobs.code` BDD. JobSync push le ResourcePath
+		// comme code, donc on envoie ResourcePath (cohérent avec la BDD).
+		var ok = await DarkHttpClient.PostAsync( "whitelist/applications", new
+		{
+			steam_id   = sid,
+			job_code   = def.ResourcePath,
+			motivation = motivation,
+		} );
+
+		if ( ok )
+		{
+			context.Reply(
+				$"✓ Candidature envoyée pour {def.Title}. Le staff l'examinera.",
+				"📋"
+			);
+		}
+		else
+		{
+			context.Reply(
+				"Erreur lors de l'envoi (réseau ou candidature déjà en cours ?).",
+				"!"
+			);
+		}
 	}
 }

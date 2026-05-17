@@ -112,6 +112,10 @@ public sealed partial class GameManager : GameObjectSystem<GameManager>, Compone
 		playerGo.NetworkSpawn( owner );
 		AdminSystem.Current?.RefreshPlayerRole( player );
 
+		// Charge les whitelists du joueur en background (fire-and-forget).
+		// Utilisé par JobManager.CanJoin pour autoriser les jobs WL.
+		_ = player.LoadWhitelistsAsync();
+
 		Local.IPlayerEvents.PostToGameObject( player.GameObject, x => x.OnSpawned() );
 		Global.IPlayerEvents.Post( x => x.OnPlayerSpawned( player ) );
 	}

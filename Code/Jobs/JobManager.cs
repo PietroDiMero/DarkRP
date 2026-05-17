@@ -33,6 +33,16 @@ public static class JobManager
 			return false;
 		}
 
+		// Whitelist check : si le job nécessite une autorisation (RequiresVote = is_whitelisted en BDD),
+		// le joueur doit être dans `player_jobs` (admin-approved via /panel/whitelist).
+		// Exception : le mayor (assigné via ElectionManager) bypass naturellement ce check car
+		// l'ElectionManager appelle SetJobDefinition directement sans passer par CanJoin.
+		if ( definition.RequiresVote && !player.HasWhitelistFor( definition ) )
+		{
+			reason = $"Job whitelisté. Tape /wl-apply {definition.ResourceName} <motivation> pour postuler.";
+			return false;
+		}
+
 		return true;
 	}
 
