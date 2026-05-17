@@ -30,6 +30,11 @@ public static class PendingActionDispatcher
 				"unban"        => await HandleUnbanAsync( action ),
 				"jail"         => await HandleJailAsync( action ),
 				"warn"         => await HandleWarnAsync( action ),
+				"slay"         => await HandleSlayAsync( action ),
+				"freeze"       => await HandleFreezeAsync( action ),
+				"mute_voice"   => await HandleMuteVoiceAsync( action ),
+				"mute_chat"    => await HandleMuteChatAsync( action ),
+				"set_job"      => await HandleSetJobAsync( action ),
 				"set_money"    => await HandleSetMoneyAsync( action ),
 				"set_vip"      => await HandleSetVipAsync( action ),
 				"set_role"     => await HandleSetRoleAsync( action ),
@@ -150,6 +155,184 @@ public static class PendingActionDispatcher
 
 		await DarkHttpClient.LogAdminActionAsync( a.CreatedBy, a.GetPayloadString( "admin_name" ),
 			a.TargetSteamId, player?.GameObject.Name, "warn", reason );
+		return true;
+	}
+
+	// ═════════════════════════════════════════════════════════════ SLAY
+	// Payload : { reason, admin_name }
+	private static async Task<bool> HandleSlayAsync( PendingAction a )
+	{
+		var player = FindPlayer( a.TargetSteamId );
+		var reason = a.GetPayloadString( "reason" ) ?? "Slay admin";
+
+		if ( player is null )
+		{
+			Log.Info( $"[Slay] Joueur {a.TargetSteamId} non connecté, ignoré." );
+			return true;
+		}
+
+		// Damage massif → tue le joueur instantanément (respecte les events Damaging/Dying)
+		player.OnDamage( new DamageInfo( float.MaxValue, player.GameObject, null ) );
+
+		if ( player.Network.Owner is not null )
+		{
+			Notices.SendNotice( player.Network.Owner, "warning", Color.Red,
+				$"Slay admin : {reason}", 5 );
+		}
+
+		await DarkHttpClient.LogAdminActionAsync( a.CreatedBy, a.GetPayloadString( "admin_name" ),
+			a.TargetSteamId, player.GameObject.Name, "slay", reason );
+		return true;
+	}
+
+	// ═════════════════════════════════════════════════════════════ FREEZE / UNFREEZE
+	// Payload : { frozen: bool, admin_name }
+	private static async Task<bool> HandleFreezeAsync( PendingAction a )
+	{
+		var player = FindPlayer( a.TargetSteamId );
+		var frozen = a.GetPayloadBool( "frozen" );
+
+		if ( player is null )
+		{
+			Log.Info( $"[Freeze] Joueur {a.TargetSteamId} non connecté." );
+			return true; // pas d'erreur — l'état est persisté en BDD par le panel
+		}
+
+		player.SetFrozen( frozen );
+
+		if ( player.Network.Owner is not null )
+		{
+			Notices.SendNotice( player.Network.Owner,
+				frozen ? "warning" : "campaign",
+				frozen ? Color.Orange : Color.Green,
+				frozen ? "Tu as été gelé par un admin." : "Tu as été dégelé.",
+				4 );
+		}
+
+		await DarkHttpClient.LogAdminActionAsync( a.CreatedBy, a.GetPayloadString( "admin_name" ),
+			a.TargetSteamId, player.GameObject.Name,
+			frozen ? "freeze" : "unfreeze",
+			frozen ? "Gelé" : "Dégelé" );
+		return true;
+	}
+
+	// ═════════════════════════════════════════════════════════════ MUTE VOICE
+	// Payload : { muted: bool, minutes: int, reason, admin_name }
+	private static async Task<bool> HandleMuteVoiceAsync( PendingAction a )
+	{
+		var muted   = a.GetPayloadBool( "muted" );
+		var minutes = (int) a.GetPayloadLong( "minutes" );
+		var reason  = a.GetPayloadString( "reason" ) ?? "";
+
+		var conn = FindConnection( a.TargetSteamId );
+		if ( conn is null )
+		{
+			Log.Info( $"[MuteVoice] Joueur {a.TargetSteamId} non connecté. État persisté côté BDD." );
+			return true;
+		}
+
+		// Apply au système Voice via la SteamId de la Connection (in-memory).
+		SandboxVoice.SetMuted( conn.SteamId, muted );
+
+		Notices.SendNotice( conn,
+			muted ? "warning" : "campaign",
+			muted ? Color.Orange : Color.Green,
+			muted
+				? $"Tu as été muté en vocal pour {minutes} min." + (reason != "" ? $"\nRaison : {reason}" : "")
+				: "Tu as été démuté en vocal.",
+			5 );
+
+		await DarkHttpClient.LogAdminActionAsync( a.CreatedBy, a.GetPayloadString( "admin_name" ),
+			a.TargetSteamId, conn.DisplayName,
+			muted ? "mute_voice" : "unmute_voice",
+			muted ? $"{minutes} min — {reason}" : "Voice restauré" );
+		return true;
+	}
+
+	// ═════════════════════════════════════════════════════════════ MUTE CHAT
+	// Payload : { muted: bool, minutes: int, reason, admin_name }
+	private static async Task<bool> HandleMuteChatAsync( PendingAction a )
+	{
+		var muted   = a.GetPayloadBool( "muted" );
+		var minutes = (int) a.GetPayloadLong( "minutes" );
+		var reason  = a.GetPayloadString( "reason" ) ?? "";
+
+		var player = FindPlayer( a.TargetSteamId );
+		if ( player is null )
+		{
+			Log.Info( $"[MuteChat] Joueur {a.TargetSteamId} non connecté." );
+			return true;
+		}
+
+		player.SetChatMuted( muted );
+
+		if ( player.Network.Owner is not null )
+		{
+			Notices.SendNotice( player.Network.Owner,
+				muted ? "warning" : "campaign",
+				muted ? Color.Orange : Color.Green,
+				muted
+					? $"Tu as été muté du chat pour {minutes} min." + (reason != "" ? $"\nRaison : {reason}" : "")
+					: "Tu as été démuté du chat.",
+				5 );
+		}
+
+		await DarkHttpClient.LogAdminActionAsync( a.CreatedBy, a.GetPayloadString( "admin_name" ),
+			a.TargetSteamId, player.GameObject.Name,
+			muted ? "mute_chat" : "unmute_chat",
+			muted ? $"{minutes} min — {reason}" : "Chat restauré" );
+		return true;
+	}
+
+	// ═════════════════════════════════════════════════════════════ SET JOB
+	// Payload : { job_code, admin_name }
+	// Le panel envoie le code du job (ex: "police"). On résout vers la JobDefinition
+	// via JobDefinition.GetAll() pour trouver celle dont le code correspond.
+	private static async Task<bool> HandleSetJobAsync( PendingAction a )
+	{
+		var player  = FindPlayer( a.TargetSteamId );
+		var jobCode = a.GetPayloadString( "job_code" ) ?? "";
+
+		if ( player is null )
+		{
+			Log.Info( $"[SetJob] Joueur {a.TargetSteamId} non connecté." );
+			return true;
+		}
+		if ( string.IsNullOrWhiteSpace( jobCode ) )
+		{
+			Log.Warning( $"[SetJob] Job code vide pour {a.TargetSteamId}." );
+			return false;
+		}
+
+		// Cherche la JobDefinition par son code (ResourceName ou via Title slugifié)
+		// La JobDefinition côté C# n'a pas forcément un champ "code" explicite : on cherche
+		// par ResourceName (= nom de fichier .jobdef sans extension) en première tentative.
+		var definition = ResourceLibrary.GetAll<JobDefinition>()
+			.FirstOrDefault( j =>
+				string.Equals( j.ResourceName, jobCode, StringComparison.OrdinalIgnoreCase )
+				|| string.Equals( j.ResourceName?.Replace( "_", "-" ), jobCode, StringComparison.OrdinalIgnoreCase )
+			);
+
+		if ( definition is null )
+		{
+			Log.Warning( $"[SetJob] JobDefinition '{jobCode}' introuvable côté C#." );
+			await DarkHttpClient.LogAdminActionAsync( a.CreatedBy, a.GetPayloadString( "admin_name" ),
+				a.TargetSteamId, player.GameObject.Name, "set_job",
+				$"ÉCHEC : job '{jobCode}' introuvable" );
+			return false;
+		}
+
+		player.SetJobDefinition( definition );
+
+		if ( player.Network.Owner is not null )
+		{
+			Notices.SendNotice( player.Network.Owner, "campaign", Color.Cyan,
+				$"Job changé par admin : {definition.Title}", 5 );
+		}
+
+		await DarkHttpClient.LogAdminActionAsync( a.CreatedBy, a.GetPayloadString( "admin_name" ),
+			a.TargetSteamId, player.GameObject.Name, "set_job",
+			$"→ {definition.Title} ({jobCode})" );
 		return true;
 	}
 

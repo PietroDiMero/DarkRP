@@ -23,6 +23,22 @@ public partial class SandboxVoice : Voice
 	}
 
 	/// <summary>
+	/// Set mute state explicitly (admin / panel action).
+	/// True = muted, false = not muted.
+	/// </summary>
+	public static void SetMuted( SteamId id, bool muted )
+	{
+		if ( muted )
+		{
+			MutedList.Add( id );
+		}
+		else
+		{
+			MutedList.Remove( id );
+		}
+	}
+
+	/// <summary>
 	/// Is this user muted?
 	/// </summary>
 	/// <param name="id"></param>

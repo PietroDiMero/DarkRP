@@ -149,6 +149,16 @@
         var author = Rpc.Caller.DisplayName;
         var steamid = Rpc.Caller.SteamId;
 
+        // Mute chat : si le caller est mute, on skip l'add chez tout le monde.
+        // Le caller voit son message disparaître sans erreur (= signal qu'il est mute).
+        var callerPlayer = Game.ActiveScene?
+            .GetAllComponents<Player>()
+            .FirstOrDefault( p => p.Network.Owner?.SteamId == steamid );
+        if ( callerPlayer is not null && callerPlayer.IsChatMuted )
+        {
+            return;
+        }
+
 		Log.Info($"{author}: {message}");
 
 		if ( Rpc.Caller == Connection.Local && message.Contains( "colmore", StringComparison.OrdinalIgnoreCase ) )

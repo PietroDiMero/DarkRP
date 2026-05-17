@@ -303,6 +303,17 @@ public sealed partial class Player : Component, Component.IDamageable, PlayerCon
 			noclip.Enabled = false;
 		}
 
+		// Freeze admin : bloque tous les inputs + arrête la vélocité, prioritaire sur tout.
+		if ( IsFrozen )
+		{
+			Controller.UseInputControls = false;
+			if ( Controller.Body.IsValid() )
+			{
+				Controller.Body.Velocity = Vector3.Zero;
+			}
+			return;
+		}
+
 		if ( Input.UsingController )
 		{
 			Controller.UseInputControls = !(Input.Down( "SpawnMenu" ) || Input.Down( "InspectMenu" ));
