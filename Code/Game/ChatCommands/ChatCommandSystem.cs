@@ -137,7 +137,13 @@ public static class ChatCommandSystem
 			canUse: p => p?.StaffRole >= StaffRole.Support, accessText: "staff", aliases: ["goto"] ),
 
 		new( "bring", "/bring <player>", "Téléporter un joueur vers toi.", BringCommand,
-			canUse: p => p?.StaffRole >= StaffRole.Support, accessText: "staff" )
+			canUse: p => p?.StaffRole >= StaffRole.Support, accessText: "staff" ),
+
+		// ── Élections du maire ──────────────────────────────────────────
+		new( "candidate", "/candidate <programme>", "Se présenter aux élections du maire (pendant la phase candidatures).", CandidateCommand ),
+		new( "vote", "/vote <numéro>", "Voter pour un candidat aux élections (pendant la phase vote).", VoteCommand ),
+		new( "election", "/election [start]", "Forcer le démarrage d'une élection du maire.", ElectionCommand,
+			canUse: p => p?.StaffRole >= StaffRole.Admin, accessText: "admin" )
 	];
 
 	public static IReadOnlyList<string> TokenizeArguments( string argumentsText )
@@ -858,5 +864,95 @@ public static class ChatCommandSystem
 			$"{target.DisplayName} amené à toi.", 2 );
 		Notices.SendNotice( target.Network.Owner, "person_pin", Color.Yellow,
 			$"Tu as été téléporté par {context.Player.DisplayName}.", 3 );
+	}
+
+	// ════════════════════════════════════════════════════════════════════
+	//  ÉLECTIONS DU MAIRE
+	// ════════════════════════════════════════════════════════════════════
+
+	/// <summary>/candidate &lt;programme&gt; — se présenter aux élections (phase candidatures).</summary>
+	static void CandidateCommand( ChatCommandContext context )
+	{
+		if ( !context.Player.IsValid() )
+		{
+			context.Reply( "Tu dois être en jeu pour te candidater.", "!" );
+			return;
+		}
+
+		var mgr = MayorElectionManager.Current;
+		if ( mgr is null )
+		{
+			context.Reply( "Système d'élections indisponible.", "!" );
+			return;
+		}
+
+		var motivation = context.ArgumentsText?.Trim();
+		if ( string.IsNullOrWhiteSpace( motivation ) || motivation.Length < 3 )
+		{
+			context.Reply( "Usage : /candidate <programme> (minimum 3 caractères)", "!" );
+			return;
+		}
+		if ( motivation.Length > 300 ) motivation = motivation[..300];
+
+		_ = HandleCandidateAsync( context, mgr, motivation );
+	}
+
+	static async Task HandleCandidateAsync( ChatCommandContext context, MayorElectionManager mgr, string motivation )
+	{
+		var (ok, message) = await mgr.RegisterCandidateAsync( context.Player, motivation );
+		context.Reply( message, ok ? "🗳️" : "!" );
+	}
+
+	/// <summary>/vote &lt;numéro&gt; — voter pour un candidat (phase vote).</summary>
+	static void VoteCommand( ChatCommandContext context )
+	{
+		if ( !context.Player.IsValid() )
+		{
+			context.Reply( "Tu dois être en jeu pour voter.", "!" );
+			return;
+		}
+
+		var mgr = MayorElectionManager.Current;
+		if ( mgr is null )
+		{
+			context.Reply( "Système d'élections indisponible.", "!" );
+			return;
+		}
+
+		if ( context.Arguments.Count < 1 || !int.TryParse( context.Arguments[0], out var num ) || num < 1 )
+		{
+			context.Reply( "Usage : /vote <numéro du candidat>", "!" );
+			return;
+		}
+
+		_ = HandleVoteAsync( context, mgr, num );
+	}
+
+	static async Task HandleVoteAsync( ChatCommandContext context, MayorElectionManager mgr, int num )
+	{
+		var (ok, message) = await mgr.RegisterVoteAsync( context.Player, num );
+		context.Reply( message, ok ? "✓" : "!" );
+	}
+
+	/// <summary>/election — force le démarrage d'une élection (admin).</summary>
+	static void ElectionCommand( ChatCommandContext context )
+	{
+		var mgr = MayorElectionManager.Ensure( Game.ActiveScene );
+		if ( mgr is null )
+		{
+			context.Reply( "Impossible de créer le manager d'élections.", "!" );
+			return;
+		}
+
+		_ = HandleElectionStartAsync( context, mgr );
+	}
+
+	static async Task HandleElectionStartAsync( ChatCommandContext context, MayorElectionManager mgr )
+	{
+		var started = await mgr.StartElectionAsync();
+		context.Reply(
+			started ? "✓ Élection lancée." : "Échec : une élection est peut-être déjà en cours.",
+			started ? "🗳️" : "!"
+		);
 	}
 }

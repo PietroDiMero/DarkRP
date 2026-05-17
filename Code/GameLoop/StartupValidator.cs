@@ -71,6 +71,7 @@ public sealed class StartupValidator : Component
 		_checks.Add( new StaffRoleAlignmentCheck() );
 		_checks.Add( new JobsLoadedCheck() );
 		_checks.Add( new EconomyConfigCheck() );
+		_checks.Add( new MayorElectionManagerCheck( this ) );
 		_checks.Add( new PendingActionsPollerCheck( this ) );
 	}
 
@@ -307,5 +308,26 @@ public sealed class PendingActionsPollerCheck : IStartupCheck
 		return Task.FromResult( StartupCheckResult.Ok( Name,
 			$"Actif, intervalle {poller.PollIntervalSeconds}s",
 			sw.ElapsedMilliseconds ) );
+	}
+}
+
+/// <summary>S'assure que le MayorElectionManager singleton existe dans la scène.</summary>
+public sealed class MayorElectionManagerCheck : IStartupCheck
+{
+	private readonly Component _ctx;
+	public MayorElectionManagerCheck( Component ctx ) { _ctx = ctx; }
+
+	public string Name => "MayorElectionManager prêt";
+
+	public Task<StartupCheckResult> RunAsync()
+	{
+		var sw = Stopwatch.StartNew();
+
+		var mgr = MayorElectionManager.Ensure( _ctx?.Scene );
+		sw.Stop();
+
+		return Task.FromResult( mgr is not null
+			? StartupCheckResult.Ok( Name, "Singleton scene créé", sw.ElapsedMilliseconds )
+			: StartupCheckResult.Fail( Name, "Impossible de créer le manager (scene null ?)", sw.ElapsedMilliseconds ) );
 	}
 }

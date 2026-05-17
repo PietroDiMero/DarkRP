@@ -97,6 +97,21 @@ public static class DarkHttpClient
 		}
 	}
 
+	// ── DELETE (pas de body) ──────────────────────────────────────────────
+	public static async Task<bool> DeleteAsync( string path )
+	{
+		try
+		{
+			var resp = await Http.RequestAsync( $"{BaseUrl}/{path}", "DELETE", null, _headers );
+			return resp is not null && resp.IsSuccessStatusCode;
+		}
+		catch ( Exception ex )
+		{
+			Log.Warning( ex, $"[DarkHttpClient] DELETE {path} echoue." );
+			return false;
+		}
+	}
+
 	// ── PATCH avec body JSON ──────────────────────────────────────────────
 	public static async Task<bool> PatchAsync( string path, object body )
 	{
