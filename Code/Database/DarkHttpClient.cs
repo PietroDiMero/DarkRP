@@ -137,9 +137,13 @@ public static class DarkHttpClient
 	public static Task<PendingAction[]> GetUnprocessedActionsAsync()
 		=> GetAsync<PendingAction[]>( "pending_actions/unprocessed" );
 
-	/// <summary>Marque une action comme exécutée côté serveur.</summary>
-	public static Task<bool> MarkActionProcessedAsync( int actionId, string result = "ok" )
-		=> PatchAsync( $"pending_actions/{actionId}/processed", new { result } );
+	/// <summary>
+	/// Marque une action comme exécutée côté serveur.
+	/// <paramref name="errorMessage"/> est stocké dans pending_actions.error_message
+	/// pour permettre au panel d'afficher le détail des erreurs dans /panel/startup.
+	/// </summary>
+	public static Task<bool> MarkActionProcessedAsync( int actionId, string result = "ok", string errorMessage = null )
+		=> PatchAsync( $"pending_actions/{actionId}/processed", new { result, error_message = errorMessage } );
 
 	/// <summary>Log une action staff in-game pour qu'elle apparaisse dans /logs du panel.</summary>
 	public static Task<bool> LogAdminActionAsync( long adminSteamId, string adminName, long? targetSteamId, string targetName, string action, string details )

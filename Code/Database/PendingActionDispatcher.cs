@@ -5,6 +5,17 @@ using Sandbox.UI;
 namespace Sandbox;
 
 /// <summary>
+/// Résultat d'un dispatch : statut + message d'erreur précis si fail.
+/// Le message remonte jusqu'au panel via pending_actions.error_message pour
+/// que le fondateur puisse voir exactement ce qui a planté dans /panel/startup.
+/// </summary>
+public readonly record struct DispatchResult( bool Ok, string Error )
+{
+	public static DispatchResult Success() => new( true, null );
+	public static DispatchResult Failure( string err ) => new( false, err );
+}
+
+/// <summary>
 /// Dispatcher central : reçoit une PendingAction et appelle le bon handler in-game.
 ///
 /// Pour ajouter une nouvelle action depuis le panel :
@@ -15,15 +26,17 @@ namespace Sandbox;
 public static class PendingActionDispatcher
 {
 	/// <summary>
-	/// Dispatch + exécute une action. Retourne true si OK, false sinon.
+	/// Dispatch + exécute une action. Retourne un DispatchResult avec un message
+	/// d'erreur précis si fail. Toute exception est capturée et son message remonté.
 	/// </summary>
-	public static async Task<bool> DispatchAsync( PendingAction action )
+	public static async Task<DispatchResult> DispatchAsync( PendingAction action )
 	{
-		if ( action is null || string.IsNullOrEmpty( action.Action ) ) return false;
+		if ( action is null || string.IsNullOrEmpty( action.Action ) )
+			return DispatchResult.Failure( "Action null ou vide" );
 
 		try
 		{
-			return action.Action switch
+			bool ok = action.Action switch
 			{
 				"kick"         => await HandleKickAsync( action ),
 				"ban"          => await HandleBanAsync( action ),
@@ -44,11 +57,19 @@ public static class PendingActionDispatcher
 				"refresh_economy" => await HandleRefreshEconomyAsync( action ),
 				_                 => HandleUnknown( action ),
 			};
+
+			return ok
+				? DispatchResult.Success()
+				: DispatchResult.Failure( $"Handler '{action.Action}' a renvoyé false (cf logs serveur)" );
 		}
 		catch ( System.Exception ex )
 		{
 			Log.Warning( ex, $"[PendingActionDispatcher] Exception sur action '{action.Action}'." );
-			return false;
+			// Format compact : type + message + 1 ligne de stack pour debug rapide depuis le panel
+			var firstStackLine = ex.StackTrace?.Split( '\n' ).FirstOrDefault()?.Trim() ?? "";
+			var msg = $"{ex.GetType().Name}: {ex.Message}";
+			if ( !string.IsNullOrEmpty( firstStackLine ) ) msg += $" @ {firstStackLine}";
+			return DispatchResult.Failure( msg );
 		}
 	}
 

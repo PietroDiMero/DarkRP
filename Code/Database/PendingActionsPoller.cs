@@ -67,11 +67,14 @@ public sealed class PendingActionsPoller : Component
 
 			foreach ( var action in actions )
 			{
-				var ok = await PendingActionDispatcher.DispatchAsync( action );
-				var result = ok ? "ok" : "failed";
-				await DarkHttpClient.MarkActionProcessedAsync( action.Id, result );
+				var result = await PendingActionDispatcher.DispatchAsync( action );
+				var status = result.Ok ? "ok" : "failed";
+				await DarkHttpClient.MarkActionProcessedAsync( action.Id, status, result.Error );
 
-				Log.Info( $"[PendingActionsPoller] Action #{action.Id} '{action.Action}' sur {action.TargetSteamId} → {result}" );
+				if ( result.Ok )
+					Log.Info( $"[PendingActionsPoller] Action #{action.Id} '{action.Action}' sur {action.TargetSteamId} → ok" );
+				else
+					Log.Warning( $"[PendingActionsPoller] Action #{action.Id} '{action.Action}' sur {action.TargetSteamId} → FAILED : {result.Error}" );
 			}
 		}
 		catch ( System.Exception ex )
