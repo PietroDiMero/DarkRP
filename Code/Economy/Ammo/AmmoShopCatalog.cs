@@ -18,7 +18,7 @@ public sealed class AmmoShopItemDefinition
 
 public static class AmmoShopCatalog
 {
-	static readonly AmmoShopItemDefinition[] Items =
+	static readonly AmmoShopItemDefinition[] _defaultItems =
 	[
 		new( "entities/pickup/ammo_9mm.prefab",    "Munitions Pistolet", 200,  "Pack de 30 balles pour pistolet." ),
 		new( "entities/pickup/ammo_rifle.prefab",  "Munitions Fusil",    400,  "Pack de 60 balles pour fusil." ),
@@ -26,9 +26,11 @@ public static class AmmoShopCatalog
 		new( "entities/pickup/ammo_rocket.prefab", "Roquettes",          3000, "Deux roquettes pour lance-roquettes.", true )
 	];
 
+	static List<AmmoShopItemDefinition> _items = _defaultItems.ToList();
+
 	public static IReadOnlyList<AmmoShopItemDefinition> GetAll()
 	{
-		return Items;
+		return _items;
 	}
 
 	public static AmmoShopItemDefinition Get( string prefabPath )
@@ -36,7 +38,34 @@ public static class AmmoShopCatalog
 		if ( string.IsNullOrWhiteSpace( prefabPath ) )
 			return null;
 
-		return Items.FirstOrDefault( x => string.Equals( x.PrefabPath, prefabPath, StringComparison.OrdinalIgnoreCase ) );
+		return _items.FirstOrDefault( x => string.Equals( x.PrefabPath, prefabPath, StringComparison.OrdinalIgnoreCase ) );
+	}
+
+	/// <summary>Remplace le catalogue par les overrides venus du panel (category=ammo).</summary>
+	public static void ApplyOverrides( IEnumerable<ShopItemOverrideDto> overrides )
+	{
+		if ( overrides is null ) return;
+
+		var active = overrides
+			.Where( o => o != null && o.IsActive && !string.IsNullOrWhiteSpace( o.PrefabPath ) )
+			.Select( o => new AmmoShopItemDefinition(
+				o.PrefabPath,
+				o.DisplayName ?? o.PrefabPath,
+				o.Price,
+				o.Description ?? "",
+				o.GunDealerOnly
+			) )
+			.ToList();
+
+		if ( active.Count == 0 )
+		{
+			Log.Warning( "[AmmoShopCatalog] Override list vide — fallback sur defaults." );
+			_items = _defaultItems.ToList();
+			return;
+		}
+
+		_items = active;
+		Log.Info( $"[AmmoShopCatalog] {_items.Count} ammo(s) actifs après override." );
 	}
 
 	public static bool ShouldShowInShop( Player player, AmmoShopItemDefinition item )

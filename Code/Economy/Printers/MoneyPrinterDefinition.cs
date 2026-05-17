@@ -44,6 +44,46 @@ public class MoneyPrinterDefinition : GameResource, IDefinitionResource
 		return ResourceLibrary.Get<MoneyPrinterDefinition>( resourcePath );
 	}
 
+	/// <summary>
+	/// Applique les overrides reçus depuis le panel admin sur les .pdef en mémoire.
+	/// Match par ResourcePath (clé stable côté admin). Modifie les properties en place
+	/// — les MoneyPrinter spawn après l'override liront les nouvelles valeurs.
+	/// Les printers déjà placés en jeu conservent leurs paramètres jusqu'au prochain spawn.
+	/// </summary>
+	public static void ApplyOverrides( IEnumerable<PrinterOverrideDto> overrides )
+	{
+		if ( overrides is null ) return;
+
+		var byPath = ResourceLibrary.GetAll<MoneyPrinterDefinition>()
+			.Where( d => !string.IsNullOrWhiteSpace( d.ResourcePath ) )
+			.ToDictionary( d => d.ResourcePath, StringComparer.OrdinalIgnoreCase );
+
+		var appliedCount = 0;
+		foreach ( var o in overrides )
+		{
+			if ( !o.IsActive ) continue;
+			if ( string.IsNullOrWhiteSpace( o.ResourcePath ) ) continue;
+			if ( !byPath.TryGetValue( o.ResourcePath, out var def ) ) continue;
+
+			// On override seulement les valeurs numériques / textuelles, pas le Prefab.
+			if ( !string.IsNullOrWhiteSpace( o.DisplayName ) ) def.Title = o.DisplayName;
+			if ( !string.IsNullOrWhiteSpace( o.Description ) ) def.Description = o.Description;
+			def.Price          = o.Price;
+			def.MoneyPerTick   = o.MoneyPerTick;
+			def.Interval       = o.IntervalSeconds > 0 ? o.IntervalSeconds : def.Interval;
+			def.MaxStoredMoney = o.MaxStored > 0 ? o.MaxStored : def.MaxStoredMoney;
+
+			if ( !string.IsNullOrWhiteSpace( o.TintHex ) && Color.TryParse( o.TintHex, out var c ) )
+			{
+				def.Tint = c;
+			}
+
+			appliedCount++;
+		}
+
+		Log.Info( $"[MoneyPrinterDefinition] {appliedCount} override(s) appliqués sur {byPath.Count} définition(s) connue(s)." );
+	}
+
 	public override Bitmap RenderThumbnail( ThumbnailOptions options )
 	{
 		if ( Prefab is null )

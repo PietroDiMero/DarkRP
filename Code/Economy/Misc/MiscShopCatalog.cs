@@ -23,15 +23,17 @@ public static class MiscShopCatalog
 	public const string HoboJobDefinitionPath = Player.HoboJobDefinitionPath;
 	public const string MayorJobDefinitionPath = Player.MayorJobDefinitionPath;
 
-	static readonly MiscShopItemDefinition[] Items =
+	static readonly MiscShopItemDefinition[] _defaultItems =
 	[
 		new( TipJar.PrefabPath, "Tip Jar", 150, "Place a jar so other players can donate money to you.", HoboJobDefinitionPath, "Hobo" ),
 		new( Lawboard.PrefabPath, "Lawboard", 250, "Place a public board that mirrors the mayor's city laws.", MayorJobDefinitionPath, "Mayor" )
 	];
 
+	static List<MiscShopItemDefinition> _items = _defaultItems.ToList();
+
 	public static IReadOnlyList<MiscShopItemDefinition> GetAll()
 	{
-		return Items;
+		return _items;
 	}
 
 	public static MiscShopItemDefinition Get( string prefabPath )
@@ -39,7 +41,39 @@ public static class MiscShopCatalog
 		if ( string.IsNullOrWhiteSpace( prefabPath ) )
 			return null;
 
-		return Items.FirstOrDefault( x => string.Equals( x.PrefabPath, prefabPath, StringComparison.OrdinalIgnoreCase ) );
+		return _items.FirstOrDefault( x => string.Equals( x.PrefabPath, prefabPath, StringComparison.OrdinalIgnoreCase ) );
+	}
+
+	/// <summary>
+	/// Remplace le catalogue par les overrides venus du panel (category=misc).
+	/// Le champ "required_job_code" en BDD est mappé vers le RequiredJobDefinitionPath
+	/// (la string est traitée comme un path de ressource — le panel doit fournir le path complet).
+	/// </summary>
+	public static void ApplyOverrides( IEnumerable<ShopItemOverrideDto> overrides )
+	{
+		if ( overrides is null ) return;
+
+		var active = overrides
+			.Where( o => o != null && o.IsActive && !string.IsNullOrWhiteSpace( o.PrefabPath ) )
+			.Select( o => new MiscShopItemDefinition(
+				o.PrefabPath,
+				o.DisplayName ?? o.PrefabPath,
+				o.Price,
+				o.Description ?? "",
+				!string.IsNullOrWhiteSpace( o.RequiredJobCode ) ? o.RequiredJobCode : null,
+				!string.IsNullOrWhiteSpace( o.RequiredJobLabel ) ? o.RequiredJobLabel : null
+			) )
+			.ToList();
+
+		if ( active.Count == 0 )
+		{
+			Log.Warning( "[MiscShopCatalog] Override list vide — fallback sur defaults." );
+			_items = _defaultItems.ToList();
+			return;
+		}
+
+		_items = active;
+		Log.Info( $"[MiscShopCatalog] {_items.Count} item(s) actifs après override." );
 	}
 
 	public static bool ShouldShowInShop( Player player, MiscShopItemDefinition item )

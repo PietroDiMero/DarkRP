@@ -20,7 +20,9 @@ public static class WeaponShopCatalog
 {
 	public const string GunDealerJobDefinitionPath = "jobs/gun_dealer.jobdef";
 
-	static readonly WeaponShopItemDefinition[] Items =
+	// Defaults hardcodés — utilisés au boot avant le premier refresh, et en fallback
+	// si la BDD est vide ou injoignable.
+	static readonly WeaponShopItemDefinition[] _defaultItems =
 	[
 		// Armes accessibles à tous
 		new( "weapons/crowbar/crowbar.prefab",     "Crowbar",         150,   "Une arme de mêlée basique. Bon marché et efficace au corps à corps." ),
@@ -38,9 +40,12 @@ public static class WeaponShopCatalog
 		new( "weapons/rpg/rpg.prefab",             "Rocket Launcher", 20000, "Lance-roquettes. Extrêmement coûteux et dangereux.", true )
 	];
 
+	// État effectif consulté par le jeu — mutable, remplaçable via ApplyOverrides
+	static List<WeaponShopItemDefinition> _items = _defaultItems.ToList();
+
 	public static IReadOnlyList<WeaponShopItemDefinition> GetAll()
 	{
-		return Items;
+		return _items;
 	}
 
 	public static WeaponShopItemDefinition Get( string prefabPath )
@@ -48,7 +53,37 @@ public static class WeaponShopCatalog
 		if ( string.IsNullOrWhiteSpace( prefabPath ) )
 			return null;
 
-		return Items.FirstOrDefault( x => string.Equals( x.PrefabPath, prefabPath, StringComparison.OrdinalIgnoreCase ) );
+		return _items.FirstOrDefault( x => string.Equals( x.PrefabPath, prefabPath, StringComparison.OrdinalIgnoreCase ) );
+	}
+
+	/// <summary>
+	/// Remplace le catalogue par les overrides venus du panel (table shop_items).
+	/// Si la liste est vide, on garde les defaults (fallback de sécurité).
+	/// </summary>
+	public static void ApplyOverrides( IEnumerable<ShopItemOverrideDto> overrides )
+	{
+		if ( overrides is null ) return;
+
+		var active = overrides
+			.Where( o => o != null && o.IsActive && !string.IsNullOrWhiteSpace( o.PrefabPath ) )
+			.Select( o => new WeaponShopItemDefinition(
+				o.PrefabPath,
+				o.DisplayName ?? o.PrefabPath,
+				o.Price,
+				o.Description ?? "",
+				o.GunDealerOnly
+			) )
+			.ToList();
+
+		if ( active.Count == 0 )
+		{
+			Log.Warning( "[WeaponShopCatalog] Override list vide — fallback sur defaults." );
+			_items = _defaultItems.ToList();
+			return;
+		}
+
+		_items = active;
+		Log.Info( $"[WeaponShopCatalog] {_items.Count} item(s) actifs après override." );
 	}
 
 	public static bool ShouldShowInShop( Player player, WeaponShopItemDefinition item )

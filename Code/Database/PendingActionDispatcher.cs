@@ -39,9 +39,10 @@ public static class PendingActionDispatcher
 				"set_vip"      => await HandleSetVipAsync( action ),
 				"set_role"     => await HandleSetRoleAsync( action ),
 				"teleport"     => await HandleTeleportAsync( action ),
-				"announce"     => await HandleAnnounceAsync( action ),
-				"refresh_jobs" => await HandleRefreshJobsAsync( action ),
-				_              => HandleUnknown( action ),
+				"announce"        => await HandleAnnounceAsync( action ),
+				"refresh_jobs"    => await HandleRefreshJobsAsync( action ),
+				"refresh_economy" => await HandleRefreshEconomyAsync( action ),
+				_                 => HandleUnknown( action ),
 			};
 		}
 		catch ( System.Exception ex )
@@ -474,6 +475,37 @@ public static class PendingActionDispatcher
 
 		Log.Info( $"[RefreshJobs] {count} job(s) actualisé(s) depuis le panel." );
 		return true;
+	}
+
+	// ═════════════════════════════════════════════════════════════ REFRESH ECONOMY
+	// Déclenché par le panel via les boutons "🔄 Refresh ingame" sur /panel/economy/*
+	// Payload : { scope: 'printers' | 'shops:weapon' | 'shops:shipment' | 'shops:ammo' | 'shops:misc' }
+	// Recharge les overrides BDD et les ré-applique aux catalogues in-memory.
+	private static async Task<bool> HandleRefreshEconomyAsync( PendingAction a )
+	{
+		var scope = a.GetPayloadString( "scope" ) ?? "";
+
+		bool ok;
+		if ( scope == "printers" )
+		{
+			ok = await EconomyOverrideStore.RefreshPrintersAsync();
+		}
+		else if ( scope.StartsWith( "shops:" ) )
+		{
+			var category = scope.Substring( "shops:".Length );
+			ok = await EconomyOverrideStore.RefreshShopsAsync( category );
+		}
+		else
+		{
+			// Scope vide ou inconnu : refresh complet
+			ok = await EconomyOverrideStore.RefreshAllAsync();
+		}
+
+		if ( !ok )
+		{
+			Log.Warning( $"[RefreshEconomy] Échec partiel du refresh scope='{scope}'." );
+		}
+		return true; // toujours considérer traité (sinon l'action sera retentée en boucle)
 	}
 
 	// ═════════════════════════════════════════════════════════════ ANNONCE

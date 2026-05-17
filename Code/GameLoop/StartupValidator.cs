@@ -251,23 +251,28 @@ public sealed class JobsLoadedCheck : IStartupCheck
 	}
 }
 
-/// <summary>Vérifie le chargement de la config économique.</summary>
+/// <summary>
+/// Refresh les overrides économie (printers + 4 catalogues shops) depuis le panel
+/// via darkapi. Si l'API est down, on garde les valeurs hardcodées par défaut.
+/// </summary>
 public sealed class EconomyConfigCheck : IStartupCheck
 {
 	public string Name => "Économie initialisée";
 
-	public Task<StartupCheckResult> RunAsync()
+	public async Task<StartupCheckResult> RunAsync()
 	{
 		var sw = Stopwatch.StartNew();
 
-		// TODO : brancher sur le vrai système d'économie du gamemode
-		// Exemple : var ok = EconomySystem.Current?.IsReady ?? false;
-		var ok = true;
+		var ok = await EconomyOverrideStore.RefreshAllAsync();
 
 		sw.Stop();
-		return Task.FromResult( ok
-			? StartupCheckResult.Ok( Name, "Économie OK", sw.ElapsedMilliseconds )
-			: StartupCheckResult.Fail( Name, "Économie non initialisée", sw.ElapsedMilliseconds ) );
+		return ok
+			? StartupCheckResult.Ok( Name,
+				$"Overrides chargés ({EconomyOverrideStore.LastPrinterCount} printers, {EconomyOverrideStore.LastShopCount} shop items)",
+				sw.ElapsedMilliseconds )
+			: StartupCheckResult.Fail( Name,
+				"Refresh partiel/échec — utilisera les defaults hardcodés",
+				sw.ElapsedMilliseconds );
 	}
 }
 

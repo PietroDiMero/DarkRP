@@ -20,7 +20,7 @@ public sealed class WeaponShipmentItemDefinition
 
 public static class WeaponShipmentCatalog
 {
-	static readonly WeaponShipmentItemDefinition[] Items =
+	static readonly WeaponShipmentItemDefinition[] _defaultItems =
 	[
 		// Caisses légères
 		new( "weapons/glock/glock.prefab",     "Caisse USP",     5500,  "Une caisse de 10 pistolets USP à revendre.", 10, true ),
@@ -36,9 +36,11 @@ public static class WeaponShipmentCatalog
 		new( "weapons/rpg/rpg.prefab",          "Caisse RPG",   150000, "Une caisse de 10 lance-roquettes. Extrêmement rare.", 10, true )
 	];
 
+	static List<WeaponShipmentItemDefinition> _items = _defaultItems.ToList();
+
 	public static IReadOnlyList<WeaponShipmentItemDefinition> GetAll()
 	{
-		return Items;
+		return _items;
 	}
 
 	public static WeaponShipmentItemDefinition Get( string weaponPrefabPath )
@@ -46,7 +48,35 @@ public static class WeaponShipmentCatalog
 		if ( string.IsNullOrWhiteSpace( weaponPrefabPath ) )
 			return null;
 
-		return Items.FirstOrDefault( x => string.Equals( x.WeaponPrefabPath, weaponPrefabPath, StringComparison.OrdinalIgnoreCase ) );
+		return _items.FirstOrDefault( x => string.Equals( x.WeaponPrefabPath, weaponPrefabPath, StringComparison.OrdinalIgnoreCase ) );
+	}
+
+	/// <summary>Remplace le catalogue par les overrides venus du panel (table shop_items, category=shipment).</summary>
+	public static void ApplyOverrides( IEnumerable<ShopItemOverrideDto> overrides )
+	{
+		if ( overrides is null ) return;
+
+		var active = overrides
+			.Where( o => o != null && o.IsActive && !string.IsNullOrWhiteSpace( o.PrefabPath ) )
+			.Select( o => new WeaponShipmentItemDefinition(
+				o.PrefabPath,
+				o.DisplayName ?? o.PrefabPath,
+				o.Price,
+				o.Description ?? "",
+				o.WeaponsPerShipment ?? 10,
+				o.GunDealerOnly
+			) )
+			.ToList();
+
+		if ( active.Count == 0 )
+		{
+			Log.Warning( "[WeaponShipmentCatalog] Override list vide — fallback sur defaults." );
+			_items = _defaultItems.ToList();
+			return;
+		}
+
+		_items = active;
+		Log.Info( $"[WeaponShipmentCatalog] {_items.Count} shipment(s) actifs après override." );
 	}
 
 	public static bool ShouldShowInShop( Player player, WeaponShipmentItemDefinition item )
