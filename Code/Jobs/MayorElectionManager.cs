@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 using System.Text.Json.Serialization;
+using Sandbox.UI;
 
 /// <summary>
 /// Gère le cycle complet des élections du maire :
@@ -324,9 +325,10 @@ public sealed class MayorElectionManager : Component, Global.IPlayerEvents
 
 	static Player FindPlayer( long steamId )
 	{
+		var target = (ulong) steamId;
 		return Game.ActiveScene?
 			.GetAllComponents<Player>()
-			.FirstOrDefault( p => p.Network.Owner?.SteamId.Value == (ulong) steamId );
+			.FirstOrDefault( p => p.Network.Owner is not null && p.Network.Owner.SteamId.Value == target );
 	}
 
 	static void BroadcastChat( string message )
