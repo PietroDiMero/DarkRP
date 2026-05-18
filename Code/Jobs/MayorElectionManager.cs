@@ -325,10 +325,9 @@ public sealed class MayorElectionManager : Component, Global.IPlayerEvents
 
 	static Player FindPlayer( long steamId )
 	{
-		var target = (ulong) steamId;
 		return Game.ActiveScene?
 			.GetAllComponents<Player>()
-			.FirstOrDefault( p => p.Network.Owner is not null && p.Network.Owner.SteamId.Value == target );
+			.FirstOrDefault( p => p.Network.Owner is not null && p.Network.Owner.SteamId.Value == steamId );
 	}
 
 	static void BroadcastChat( string message )
