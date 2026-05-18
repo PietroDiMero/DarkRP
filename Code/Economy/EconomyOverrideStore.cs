@@ -2,8 +2,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Text.Json.Serialization;
 
-namespace Sandbox;
-
 /// <summary>
 /// Récupère les overrides économie depuis le panel via darkapi et les applique
 /// aux catalogues in-memory (printers + shops).

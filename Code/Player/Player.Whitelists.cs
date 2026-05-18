@@ -2,8 +2,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Text.Json.Serialization;
 
-namespace Sandbox;
-
 /// <summary>
 /// Cache local des jobs whitelistés accordés au joueur (admin-approved via panel).
 ///

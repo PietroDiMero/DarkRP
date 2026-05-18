@@ -1,5 +1,3 @@
-namespace Sandbox;
-
 /// <summary>
 /// Partial class Player : actions de modération volatiles (non persistées au reload).
 /// - <see cref="IsFrozen"/> : empêche tout input/mouvement (set par le panel via PendingActionDispatcher).

@@ -2,8 +2,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Text.Json.Serialization;
 
-namespace Sandbox;
-
 /// <summary>
 /// Gère le cycle complet des élections du maire :
 ///   1. PHASE CANDIDATURES (3 min) : /candidate &lt;motivation&gt; → POST darkapi
