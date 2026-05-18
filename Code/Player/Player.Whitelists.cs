@@ -17,7 +17,7 @@ namespace Sandbox;
 public sealed partial class Player
 {
 	// Synced FromHost car les clients peuvent vouloir afficher l'info (UI scoreboard)
-	[Sync( SyncFlags.FromHost )]
+	[Property, Sync( SyncFlags.FromHost )]
 	public NetList<string> WhitelistedJobCodes { get; private set; } = new();
 
 	/// <summary>True si le joueur a la WL pour ce job (lecture synchrone).</summary>

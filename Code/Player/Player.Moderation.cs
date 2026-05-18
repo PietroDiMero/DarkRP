@@ -12,10 +12,10 @@ namespace Sandbox;
 /// </summary>
 public sealed partial class Player
 {
-	[Sync( SyncFlags.FromHost )]
+	[Property, Sync( SyncFlags.FromHost )]
 	public bool IsFrozen { get; set; }
 
-	[Sync( SyncFlags.FromHost )]
+	[Property, Sync( SyncFlags.FromHost )]
 	public bool IsChatMuted { get; set; }
 
 	/// <summary>Set l'état "gelé" du joueur. Server-side uniquement.</summary>
