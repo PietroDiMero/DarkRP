@@ -31,12 +31,34 @@ public sealed partial class Player
 		if ( !Networking.IsHost || definition is null )
 			return;
 
+		var previousPath = JobDefinitionPath;
 		CleanupPreviousJobItems( JobDefinitionPath, definition.ResourcePath );
 
 		JobDefinitionPath = definition.ResourcePath;
 		SetJobTitle( definition.Title );
 		PlayerData?.SetJob( definition.ResourcePath, definition.Title );
 		SaveRoleplayData();
+
+		// Avertissement gang : si le nouveau job est "Criminal" ET que le joueur est dans
+		// un gang avec une taxe > 0, on le prévient qu'une partie de son salaire ira à la caisse.
+		// On évite la notif si on garde le même job (init/EnsureValid).
+		if ( !string.Equals( previousPath, definition.ResourcePath, System.StringComparison.OrdinalIgnoreCase )
+			&& string.Equals( definition.Category?.Trim(), "Criminal", System.StringComparison.OrdinalIgnoreCase ) )
+		{
+			_ = NotifyGangCriminalTaxAsync( definition );
+		}
+	}
+
+	async System.Threading.Tasks.Task NotifyGangCriminalTaxAsync( JobDefinition definition )
+	{
+		if ( Network.Owner is not { } owner ) return;
+		var sid  = (long)owner.SteamId.Value;
+		var gang = await GangApi.GetByMemberAsync( sid );
+		if ( gang is null || gang.TaxPctCriminal <= 0 ) return;
+		if ( !IsValid() ) return;
+
+		Notices.SendNotice( owner, "warning", Color.Orange,
+			$"⚠ [{gang.Tag}] taxe {gang.TaxPctCriminal}% de ton salaire {definition.Title}.", 6f );
 	}
 
 	void CleanupPreviousJobItems( string oldJobDefinitionPath, string newJobDefinitionPath )

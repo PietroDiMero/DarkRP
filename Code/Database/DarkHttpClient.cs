@@ -129,6 +129,68 @@ public static class DarkHttpClient
 		}
 	}
 
+	// ── POST/PATCH qui renvoie aussi le message d'erreur du PHP ──────────
+	// Utile quand on veut afficher un feedback détaillé au joueur in-game
+	// (ex: "Tag déjà pris", "Solde insuffisant").
+	public sealed class ApiResult<T> where T : class
+	{
+		public bool   Ok      { get; init; }
+		public T      Data    { get; init; }
+		public string Error   { get; init; }
+		public int    Status  { get; init; }
+	}
+
+	static async Task<ApiResult<T>> SendWithBodyAsync<T>( string method, string path, object body ) where T : class
+	{
+		try
+		{
+			System.Net.Http.HttpContent content = null;
+			if ( body is not null )
+			{
+				var json = JsonSerializer.Serialize( body, _jsonOpts );
+				content  = new System.Net.Http.StringContent( json, System.Text.Encoding.UTF8, "application/json" );
+			}
+
+			var resp = await Http.RequestAsync( $"{BaseUrl}/{path}", method, content, _headers );
+			if ( resp is null )
+				return new ApiResult<T> { Ok = false, Error = "Pas de réponse du serveur", Status = 0 };
+
+			var respBody = await resp.Content.ReadAsStringAsync();
+			var status   = (int)resp.StatusCode;
+
+			if ( resp.IsSuccessStatusCode )
+			{
+				T data = null;
+				try { if ( !string.IsNullOrWhiteSpace( respBody ) ) data = JsonSerializer.Deserialize<T>( respBody, _jsonOpts ); }
+				catch { /* ignore : data restera null */ }
+				return new ApiResult<T> { Ok = true, Data = data, Status = status };
+			}
+
+			// Tente d'extraire le champ "error" du body JSON
+			string err = $"HTTP {status}";
+			try
+			{
+				using var doc = JsonDocument.Parse( respBody );
+				if ( doc.RootElement.TryGetProperty( "error", out var e ) )
+					err = e.GetString() ?? err;
+			}
+			catch { /* body non-JSON */ }
+
+			return new ApiResult<T> { Ok = false, Error = err, Status = status };
+		}
+		catch ( Exception ex )
+		{
+			Log.Warning( ex, $"[DarkHttpClient] {method} {path} echoue." );
+			return new ApiResult<T> { Ok = false, Error = ex.Message, Status = 0 };
+		}
+	}
+
+	public static Task<ApiResult<T>> PostWithResultAsync<T>( string path, object body ) where T : class
+		=> SendWithBodyAsync<T>( "POST", path, body );
+
+	public static Task<ApiResult<T>> PatchWithResultAsync<T>( string path, object body ) where T : class
+		=> SendWithBodyAsync<T>( "PATCH", path, body );
+
 	// ────────────────────────────────────────────────────────────────────
 	//  Helpers spécifiques pour les actions panel ↔ jeu
 	// ────────────────────────────────────────────────────────────────────

@@ -146,7 +146,12 @@ public static class ChatCommandSystem
 			canUse: p => p?.StaffRole >= StaffRole.Admin, accessText: "admin" ),
 
 		// ── Whitelist ───────────────────────────────────────────────────
-		new( "wl-apply", "/wl-apply <job_code> <motivation>", "Postuler pour un job whitelisté (validé par le staff).", WhitelistApplyCommand, aliases: ["wl", "wlapply"] )
+		new( "wl-apply", "/wl-apply <job_code> <motivation>", "Postuler pour un job whitelisté (validé par le staff).", WhitelistApplyCommand, aliases: ["wl", "wlapply"] ),
+
+		// ── Gangs / factions joueurs ────────────────────────────────────
+		new( "gang", "/gang <create|info|invite|accept|leave|kick|deposit|tax|...>",
+			"Gestion des gangs joueurs (tape /gang help pour la liste complète).",
+			GangCommands.Handle )
 	];
 
 	public static IReadOnlyList<string> TokenizeArguments( string argumentsText )
