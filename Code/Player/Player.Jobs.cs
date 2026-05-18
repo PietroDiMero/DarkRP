@@ -55,7 +55,7 @@ public sealed partial class Player
 		var sid  = (long)owner.SteamId.Value;
 		var gang = await GangApi.GetByMemberAsync( sid );
 		if ( gang is null || gang.TaxPctCriminal <= 0 ) return;
-		if ( !IsValid() ) return;
+		if ( !IsValid ) return;
 
 		Notices.SendNotice( owner, "warning", Color.Orange,
 			$"⚠ [{gang.Tag}] taxe {gang.TaxPctCriminal}% de ton salaire {definition.Title}.", 6f );
