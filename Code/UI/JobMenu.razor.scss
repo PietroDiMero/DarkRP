@@ -2,38 +2,78 @@
 
 JobMenu
 {
+	position: absolute;
+	top: 0; left: 0;
 	width: 100%;
 	height: 100%;
+	pointer-events: none;
 	font-family: $body-font;
 	color: $menu-color;
 	font-size: 14px;
+	opacity: 0;
+	transition: opacity 0.15s ease-out;
+	z-index: 500;
+
+	&.open
+	{
+		opacity: 1;
+		pointer-events: all;
+	}
 }
 
-.job-menu-wrap
+JobMenu > root
 {
-	flex-direction: column;
 	width: 100%;
 	height: 100%;
-	max-width: 900px;
-	align-self: center;
-	padding: 80px 48px 80px 48px;
-	gap: 0;
+	justify-content: center;
+	align-items: center;
+}
+
+/* ── Backdrop (clic ferme) ── */
+.job-backdrop
+{
+	position: absolute;
+	top: 0; left: 0;
+	width: 100%;
+	height: 100%;
+	background-color: rgba(0, 0, 0, 0.55);
+	backdrop-filter: blur(4px);
+	cursor: pointer;
+}
+
+/* ── Fenêtre principale ── */
+.job-window
+{
+	flex-direction: column;
+	width: 880px;
+	max-height: 78vh;
+	background-color: #0c202fee;
+	border: 1px solid rgba(0, 148, 255, 0.3);
+	border-radius: 12px;
+	box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5), 0 0 24px rgba(0, 148, 255, 0.15);
+	overflow: hidden;
+	z-index: 10;
 }
 
 /* ── Header ── */
-
-.job-menu-header
+.job-header
 {
 	flex-direction: row;
 	align-items: center;
 	justify-content: space-between;
-	padding: 0 4px 12px 4px;
-	border-bottom: 1px solid rgba(255,255,255,0.08);
-	margin-bottom: 8px;
+	padding: 16px 20px;
+	background: linear-gradient(180deg, rgba(0, 148, 255, 0.08), transparent);
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 	flex-shrink: 0;
 }
 
-.job-menu-title
+.job-header-left
+{
+	flex-direction: column;
+	gap: 4px;
+}
+
+.job-title
 {
 	font-family: $subtitle-font;
 	font-size: 20px;
@@ -42,51 +82,68 @@ JobMenu
 	letter-spacing: 0.02em;
 }
 
-.job-menu-current
+.job-current
 {
 	flex-direction: row;
 	align-items: center;
 	gap: 8px;
-	font-size: 13px;
+	font-size: 12px;
 	color: $menu-text;
-	font-weight: 600;
+	opacity: 0.85;
 }
 
-.job-menu-current-dot
+.job-current-dot
 {
-	width: 10px;
-	height: 10px;
+	width: 9px;
+	height: 9px;
 	border-radius: 50%;
 	flex-shrink: 0;
 }
 
-/* ── Scrollable list ── */
+.job-close
+{
+	width: 28px;
+	height: 28px;
+	border-radius: 6px;
+	background-color: rgba(255, 255, 255, 0.06);
+	justify-content: center;
+	align-items: center;
+	cursor: pointer;
+	font-size: 14px;
+	color: $menu-text;
 
-.job-menu-scroll
+	&:hover
+	{
+		background-color: rgba(255, 80, 80, 0.2);
+		color: #ff8080;
+		sound-in: ui.hover;
+	}
+}
+
+/* ── Scrollable list ── */
+.job-scroll
 {
 	flex-direction: column;
 	overflow-y: scroll;
 	overflow-x: hidden;
 	flex-grow: 1;
+	padding: 8px 12px 16px 12px;
 	gap: 2px;
-	padding-right: 4px;
 }
 
 /* ── Category label ── */
-
 .job-category-label
 {
 	font-family: $subtitle-font;
 	font-size: 10px;
 	font-weight: 800;
-	letter-spacing: 0.12em;
-	color: rgba(255,255,255,0.35);
+	letter-spacing: 0.14em;
+	color: rgba(255, 255, 255, 0.4);
 	padding: 14px 8px 4px 8px;
 	flex-shrink: 0;
 }
 
 /* ── Job row ── */
-
 .job-row
 {
 	flex-direction: row;
@@ -95,46 +152,45 @@ JobMenu
 	padding: 10px 14px 10px 0;
 	border-radius: 8px;
 	cursor: pointer;
-	background-color: rgba(255,255,255,0.03);
+	background-color: rgba(255, 255, 255, 0.025);
 	border: 1px solid transparent;
 	flex-shrink: 0;
 	transition: background-color 0.1s ease;
 
 	&:hover
 	{
-		background-color: rgba(255,255,255,0.07);
-		border-color: rgba(255,255,255,0.08);
+		background-color: rgba(255, 255, 255, 0.07);
+		border-color: rgba(255, 255, 255, 0.08);
 		sound-in: ui.hover;
 	}
 
 	&:active
 	{
-		background-color: rgba(255,255,255,0.1);
+		background-color: rgba(255, 255, 255, 0.1);
 		sound-in: ui.select;
 	}
 
 	&.current
 	{
-		background-color: rgba(0,148,255,0.1);
-		border-color: rgba(0,148,255,0.25);
+		background-color: rgba(0, 148, 255, 0.1);
+		border-color: rgba(0, 148, 255, 0.25);
 		pointer-events: none;
 
 		&:hover
 		{
-			background-color: rgba(0,148,255,0.1);
+			background-color: rgba(0, 148, 255, 0.1);
 		}
 	}
 
 	&.full
 	{
-		opacity: 0.45;
+		opacity: 0.4;
 		cursor: default;
 		pointer-events: none;
 	}
 }
 
 /* ── Color accent bar ── */
-
 .job-color-bar
 {
 	width: 4px;
@@ -144,7 +200,6 @@ JobMenu
 }
 
 /* ── Job info ── */
-
 .job-info
 {
 	flex-direction: column;
@@ -163,11 +218,10 @@ JobMenu
 {
 	font-size: 12px;
 	color: $menu-text;
-	opacity: 0.75;
+	opacity: 0.7;
 }
 
-/* ── Job meta (right side) ── */
-
+/* ── Job meta ── */
 .job-meta
 {
 	flex-direction: row;
@@ -196,7 +250,7 @@ JobMenu
 	font-size: 12px;
 	font-weight: 600;
 	color: $menu-text;
-	min-width: 40px;
+	min-width: 42px;
 	text-align: right;
 
 	&.full
@@ -206,7 +260,6 @@ JobMenu
 }
 
 /* ── Badges ── */
-
 .job-badge
 {
 	font-size: 10px;
@@ -219,22 +272,22 @@ JobMenu
 
 	&.wl
 	{
-		background-color: rgba(255,200,60,0.15);
+		background-color: rgba(255, 200, 60, 0.15);
 		color: #ffc83c;
-		border: 1px solid rgba(255,200,60,0.3);
+		border: 1px solid rgba(255, 200, 60, 0.3);
 	}
 
 	&.current
 	{
-		background-color: rgba(0,148,255,0.15);
+		background-color: rgba(0, 148, 255, 0.15);
 		color: #60b8ff;
-		border: 1px solid rgba(0,148,255,0.3);
+		border: 1px solid rgba(0, 148, 255, 0.3);
 	}
 
-	&.full
+	&.fullb
 	{
-		background-color: rgba(255,80,80,0.15);
+		background-color: rgba(255, 80, 80, 0.15);
 		color: #ff8080;
-		border: 1px solid rgba(255,80,80,0.25);
+		border: 1px solid rgba(255, 80, 80, 0.25);
 	}
 }

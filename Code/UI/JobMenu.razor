@@ -1,76 +1,111 @@
 @using Sandbox;
 @using Sandbox.UI;
 @namespace Sandbox
-@inherits Panel
-@attribute [SpawnMenuHost.SpawnMenuMode]
-@attribute [Icon( "💼" )]
-@attribute [Title( "Métiers" )]
-@attribute [Order( -50 )]
+@inherits PanelComponent
 
-<root>
+<root class="@(_open ? "open" : "")">
 
-	<div class="job-menu-wrap">
+	@if ( _open )
+	{
+		<div class="job-backdrop" @onclick="@ClosePanel"></div>
 
-		<div class="job-menu-header">
-			<div class="job-menu-title">Choisir un métier</div>
-			@if ( CurrentJob is { } cj )
-			{
-				<div class="job-menu-current">
-					<div class="job-menu-current-dot" style="background-color: @ColorHex( cj.GetDisplayColor() )"></div>
-					<span>@cj.Title</span>
+		<div class="job-window">
+
+			<div class="job-header">
+				<div class="job-header-left">
+					<div class="job-title">💼 Choisir un métier</div>
+					@if ( CurrentJob is { } cj )
+					{
+						<div class="job-current">
+							<div class="job-current-dot" style="background-color: @ColorHex( cj.GetDisplayColor() )"></div>
+							<span>Actuel : @cj.Title</span>
+						</div>
+					}
 				</div>
-			}
-		</div>
+				<div class="job-close" @onclick="@ClosePanel">✕</div>
+			</div>
 
-		<div class="job-menu-scroll">
+			<div class="job-scroll">
 
-			@foreach ( var group in GroupedJobs() )
-			{
-				<div class="job-category-label">@group.Key.ToUpperInvariant()</div>
-
-				@foreach ( var job in group )
+				@foreach ( var group in GroupedJobs() )
 				{
-					var isCurrent   = string.Equals( LocalPlayer?.JobDefinitionPath, job.ResourcePath, StringComparison.OrdinalIgnoreCase );
-					var count       = JobManager.CountPlayers( job );
-					var isFull      = job.MaxPlayers > 0 && count >= job.MaxPlayers && !isCurrent;
-					var slotsText   = job.MaxPlayers > 0 ? $"{count}/{job.MaxPlayers}" : $"{count}/∞";
-					var accentHex   = ColorHex( job.GetDisplayColor() );
+					<div class="job-category-label">@group.Key.ToUpperInvariant()</div>
 
-					<div class="job-row @(isCurrent ? "current" : "") @(isFull ? "full" : "")"
-					     @onclick=@(() => TryJoin( job ))>
+					@foreach ( var job in group )
+					{
+						var isCurrent = string.Equals( LocalPlayer?.JobDefinitionPath, job.ResourcePath, StringComparison.OrdinalIgnoreCase );
+						var count     = JobManager.CountPlayers( job );
+						var isFull    = job.MaxPlayers > 0 && count >= job.MaxPlayers && !isCurrent;
+						var slotsText = job.MaxPlayers > 0 ? $"{count}/{job.MaxPlayers}" : $"{count}/∞";
+						var accentHex = ColorHex( job.GetDisplayColor() );
 
-						<div class="job-color-bar" style="background-color: @accentHex"></div>
+						<div class="job-row @(isCurrent ? "current" : "") @(isFull ? "full" : "")"
+						     @onclick=@(() => TryJoin( job ))>
 
-						<div class="job-info">
-							<div class="job-name" style="color: @accentHex">@job.Title</div>
-							@if ( !string.IsNullOrWhiteSpace( job.Description ) )
-							{
-								<div class="job-desc">@job.Description</div>
-							}
+							<div class="job-color-bar" style="background-color: @accentHex"></div>
+
+							<div class="job-info">
+								<div class="job-name" style="color: @accentHex">@job.Title</div>
+								@if ( !string.IsNullOrWhiteSpace( job.Description ) )
+								{
+									<div class="job-desc">@job.Description</div>
+								}
+							</div>
+
+							<div class="job-meta">
+								<div class="job-salary">$@job.Salary<span class="job-salary-unit">/min</span></div>
+								<div class="job-slots @(isFull ? "full" : "")">@slotsText</div>
+								@if ( job.RequiresVote ) { <div class="job-badge wl">WL</div> }
+								@if ( isCurrent )      { <div class="job-badge current">▶ Actuel</div> }
+								@if ( isFull )         { <div class="job-badge fullb">Complet</div> }
+							</div>
+
 						</div>
-
-						<div class="job-meta">
-							<div class="job-salary">$@job.Salary<span class="job-salary-unit">/min</span></div>
-							<div class="job-slots @(isFull ? "full" : "")">@slotsText</div>
-							@if ( job.RequiresVote ) { <div class="job-badge wl">WL</div> }
-							@if ( isCurrent )      { <div class="job-badge current">▶ Actuel</div> }
-							@if ( isFull )         { <div class="job-badge full">Complet</div> }
-						</div>
-
-					</div>
+					}
 				}
-			}
+
+			</div>
 
 		</div>
-
-	</div>
+	}
 
 </root>
 
 @code
 {
-	Player LocalPlayer  => Player.FindLocalPlayer();
+	bool _open = false;
+
+	Player LocalPlayer => Player.FindLocalPlayer();
 	JobDefinition CurrentJob => LocalPlayer?.CurrentJobDefinition;
+
+	protected override void OnUpdate()
+	{
+		// F1 ouvre/ferme le menu. On utilise Input.Keyboard.Pressed pour bypass les InputActions S&Box.
+		if ( Input.Pressed( "JobMenu" ) || Input.Keyboard.Pressed( "F1" ) )
+			TogglePanel();
+
+		// ESC ferme
+		if ( _open && Input.Keyboard.Pressed( "Escape" ) )
+			ClosePanel();
+
+		SetClass( "open", _open );
+
+		// Bloquer le jeu si le panel est ouvert (souris libre, pas de tir, etc.)
+		if ( Panel is not null )
+			Panel.AcceptsFocus = _open;
+	}
+
+	void TogglePanel()
+	{
+		_open = !_open;
+		StateHasChanged();
+	}
+
+	void ClosePanel()
+	{
+		_open = false;
+		StateHasChanged();
+	}
 
 	IEnumerable<IGrouping<string, JobDefinition>> GroupedJobs()
 	{
@@ -93,6 +128,8 @@
 	void TryJoin( JobDefinition job )
 	{
 		LocalPlayer?.RequestSetJob( job.ResourcePath );
+		// Ferme le menu après sélection
+		ClosePanel();
 	}
 
 	static string ColorHex( Color c )
@@ -105,7 +142,8 @@
 
 	protected override int BuildHash() =>
 		HashCode.Combine(
+			_open,
 			LocalPlayer?.JobDefinitionPath,
-			(int)Time.Now   // rafraîchit les slots 1×/s sans flood
+			(int)Time.Now   // refresh slots 1×/s
 		);
 }
