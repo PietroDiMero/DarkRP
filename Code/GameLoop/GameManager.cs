@@ -35,7 +35,7 @@ public sealed partial class GameManager : GameObjectSystem<GameManager>, Compone
 		_ = PlayerSessionsTracker.StartAsync( channel );
 
 		Scene.Get<Chat>()?.AddSystemText( $"{channel.DisplayName} a rejoint le serveur — Bienvenue sur Pietro DarkRP !", "👋" );
-		Scene.Get<Chat>()?.AddSystemText( $"💡 Utilisez F1 pour choisir votre métier. Respectez les règles et amusez-vous bien !", null );
+		Scene.Get<Chat>()?.AddSystemText( $"💡 Maintiens Q pour choisir ton métier (onglet Métiers). Respecte les règles et amuse-toi bien !", null );
 	}
 
 	/// <summary>
