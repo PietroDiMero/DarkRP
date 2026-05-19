@@ -10,6 +10,15 @@ public sealed partial class DarkDatabase
 		var steamId = (long)connection.SteamId.Value;
 		var ip      = connection.Address ?? "";
 
+		// Si S&Box renvoie une IP "garbage" (vide / unknown / loopback), on log un
+		// warning : on saura que ce n'est pas la BDD qui foire mais la couche réseau.
+		bool ipLooksValid = !string.IsNullOrWhiteSpace( ip )
+			&& !string.Equals( ip, "unknown", StringComparison.OrdinalIgnoreCase )
+			&& ip != "0.0.0.0" && ip != "127.0.0.1" && ip != "::1";
+
+		if ( !ipLooksValid )
+			Log.Warning( $"[DarkDatabase] IP invalide pour {steamId} (reçu: '{ip}') — connection.Address indispo ?" );
+
 		// Essayer de charger depuis MySQL si pas en cache
 		if ( !_players.TryGetValue( steamId, out var record ) )
 			record = await LoadPlayerAsync( steamId );
@@ -21,7 +30,7 @@ public sealed partial class DarkDatabase
 			{
 				SteamId   = steamId,
 				SteamName = connection.DisplayName,
-				LastIp    = ip,
+				LastIp    = ipLooksValid ? ip : null,
 				FirstSeen = DateTime.UtcNow,
 				LastSeen  = DateTime.UtcNow,
 			};
@@ -29,9 +38,11 @@ public sealed partial class DarkDatabase
 		}
 		else
 		{
-			// Mise à jour des infos dynamiques
+			// Mise à jour des infos dynamiques.
+			// On ne touche PAS last_ip si la nouvelle IP est garbage (évite d'écraser
+			// une IP historique valide par "unknown" suite à un glitch S&Box).
 			record.SteamName = connection.DisplayName;
-			record.LastIp    = ip;
+			if ( ipLooksValid ) record.LastIp = ip;
 			record.LastSeen  = DateTime.UtcNow;
 		}
 
