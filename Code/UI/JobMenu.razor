@@ -1,0 +1,111 @@
+@using Sandbox;
+@using Sandbox.UI;
+@namespace Sandbox
+@inherits Panel
+@attribute [SpawnMenuHost.SpawnMenuMode]
+@attribute [Icon( "💼" )]
+@attribute [Title( "Métiers" )]
+@attribute [Order( -50 )]
+
+<root>
+
+	<div class="job-menu-wrap">
+
+		<div class="job-menu-header">
+			<div class="job-menu-title">Choisir un métier</div>
+			@if ( CurrentJob is { } cj )
+			{
+				<div class="job-menu-current">
+					<div class="job-menu-current-dot" style="background-color: @ColorHex( cj.GetDisplayColor() )"></div>
+					<span>@cj.Title</span>
+				</div>
+			}
+		</div>
+
+		<div class="job-menu-scroll">
+
+			@foreach ( var group in GroupedJobs() )
+			{
+				<div class="job-category-label">@group.Key.ToUpperInvariant()</div>
+
+				@foreach ( var job in group )
+				{
+					var isCurrent   = string.Equals( LocalPlayer?.JobDefinitionPath, job.ResourcePath, StringComparison.OrdinalIgnoreCase );
+					var count       = JobManager.CountPlayers( job );
+					var isFull      = job.MaxPlayers > 0 && count >= job.MaxPlayers && !isCurrent;
+					var slotsText   = job.MaxPlayers > 0 ? $"{count}/{job.MaxPlayers}" : $"{count}/∞";
+					var accentHex   = ColorHex( job.GetDisplayColor() );
+
+					<div class="job-row @(isCurrent ? "current" : "") @(isFull ? "full" : "")"
+					     @onclick=@(() => TryJoin( job ))>
+
+						<div class="job-color-bar" style="background-color: @accentHex"></div>
+
+						<div class="job-info">
+							<div class="job-name" style="color: @accentHex">@job.Title</div>
+							@if ( !string.IsNullOrWhiteSpace( job.Description ) )
+							{
+								<div class="job-desc">@job.Description</div>
+							}
+						</div>
+
+						<div class="job-meta">
+							<div class="job-salary">$@job.Salary<span class="job-salary-unit">/min</span></div>
+							<div class="job-slots @(isFull ? "full" : "")">@slotsText</div>
+							@if ( job.RequiresVote ) { <div class="job-badge wl">WL</div> }
+							@if ( isCurrent )      { <div class="job-badge current">▶ Actuel</div> }
+							@if ( isFull )         { <div class="job-badge full">Complet</div> }
+						</div>
+
+					</div>
+				}
+			}
+
+		</div>
+
+	</div>
+
+</root>
+
+@code
+{
+	Player LocalPlayer  => Player.FindLocalPlayer();
+	JobDefinition CurrentJob => LocalPlayer?.CurrentJobDefinition;
+
+	IEnumerable<IGrouping<string, JobDefinition>> GroupedJobs()
+	{
+		return JobDefinition.GetAll()
+			.GroupBy( j => string.IsNullOrWhiteSpace( j.Category ) ? "Autre" : j.Category )
+			.OrderBy( g => CategoryOrder( g.Key ) )
+			.ThenBy( g => g.Key );
+	}
+
+	static int CategoryOrder( string cat ) => cat switch
+	{
+		"Civilian"   => 0,
+		"Government" => 1,
+		"Services"   => 2,
+		"Commerce"   => 3,
+		"Criminal"   => 4,
+		_            => 99,
+	};
+
+	void TryJoin( JobDefinition job )
+	{
+		LocalPlayer?.RequestSetJob( job.ResourcePath );
+	}
+
+	static string ColorHex( Color c )
+	{
+		int r = (int)Math.Clamp( c.r * 255f, 0f, 255f );
+		int g = (int)Math.Clamp( c.g * 255f, 0f, 255f );
+		int b = (int)Math.Clamp( c.b * 255f, 0f, 255f );
+		return $"#{r:X2}{g:X2}{b:X2}";
+	}
+
+	protected override int BuildHash() =>
+		HashCode.Combine(
+			LocalPlayer?.JobDefinitionPath,
+			(int)Time.Now   // rafraîchit les slots 1×/s sans flood
+		);
+}
