@@ -22,7 +22,8 @@ public sealed partial class Player
 			return;
 
 		Money += amount;
-		SaveRoleplayData();
+		SaveRoleplayData();                                       // backup JSON local
+		DarkDatabase.Instance?.SyncMoneyFromPlayer( SteamId, Money ); // persist MySQL
 	}
 
 	public bool TryTakeMoney( int amount )
@@ -32,6 +33,7 @@ public sealed partial class Player
 
 		Money -= amount;
 		SaveRoleplayData();
+		DarkDatabase.Instance?.SyncMoneyFromPlayer( SteamId, Money );
 		return true;
 	}
 
@@ -42,6 +44,7 @@ public sealed partial class Player
 
 		Money = Math.Max( 0, amount );
 		SaveRoleplayData();
+		DarkDatabase.Instance?.SyncMoneyFromPlayer( SteamId, Money );
 	}
 
 	public void SetJobTitle( string title )

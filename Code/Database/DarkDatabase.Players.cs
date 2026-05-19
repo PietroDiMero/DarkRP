@@ -19,13 +19,31 @@ public sealed partial class DarkDatabase
 		if ( !ipLooksValid )
 			Log.Warning( $"[DarkDatabase] IP invalide pour {steamId} (reçu: '{ip}') — connection.Address indispo ?" );
 
-		// Essayer de charger depuis MySQL si pas en cache
-		if ( !_players.TryGetValue( steamId, out var record ) )
-			record = await LoadPlayerAsync( steamId );
-
-		if ( record is null )
+		// Essayer de charger depuis MySQL si pas en cache.
+		// IMPORTANT : on distingue 404 (vraiment nouveau joueur) d'une erreur API (transient).
+		// Si l'API est down, on N'ÉCRASE PAS le record BDD avec des defaults — sinon ON PERD
+		// l'argent / le rôle / etc. à chaque hoquet réseau.
+		PlayerRecord record = null;
+		bool isNewPlayer = false;
+		if ( !_players.TryGetValue( steamId, out record ) )
 		{
-			// Nouveau joueur
+			var (loaded, notFound, errored) = await DarkHttpClient.GetWithStatusAsync<PlayerRecord>( $"players/{steamId}" );
+
+			if ( errored )
+			{
+				// API ou réseau KO — on abort pour ne pas écraser. On retry au prochain connect.
+				Log.Error( $"[DarkDatabase] ⛔ Load joueur {steamId} échoué (API down ?). " +
+				           "Pas de save — record BDD préservé. Le joueur va jouer avec defaults runtime." );
+				return;
+			}
+
+			if ( notFound ) isNewPlayer = true;
+			else            record      = loaded;
+		}
+
+		if ( isNewPlayer || record is null )
+		{
+			// Vrai nouveau joueur (404 confirmé)
 			record = new PlayerRecord
 			{
 				SteamId   = steamId,
@@ -134,12 +152,17 @@ public sealed partial class DarkDatabase
 		SyncMoneyToPlayer( steamId, record.Money );
 	}
 
-	/// <summary>Synchronise l'argent depuis le composant Player vers le cache (sans sauvegarder immédiatement).</summary>
+	/// <summary>
+	/// Synchronise l'argent depuis le composant Player vers le cache ET vers MySQL.
+	/// Appelé par Player.GiveMoney/SetMoney/TryTakeMoney à chaque changement.
+	/// Note : ne re-déclenche PAS SyncMoneyToPlayer (évite la boucle infinie player↔db).
+	/// </summary>
 	public void SyncMoneyFromPlayer( long steamId, int currentMoney )
 	{
 		if ( !_players.TryGetValue( steamId, out var record ) ) return;
+		if ( record.Money == currentMoney ) return;                    // no-op si pas de changement
 		record.Money = currentMoney;
-		// Pas de sauvegarde ici — l'auto-save périodique le fera
+		_ = DarkHttpClient.PatchAsync( $"players/{steamId}/money", new { money = currentMoney } );
 	}
 
 	// ── VIP ─────────────────────────────────────────────────────────────────

@@ -60,6 +60,31 @@ public static class DarkHttpClient
 		}
 	}
 
+	/// <summary>
+	/// GET avec distinction 404 (truly not found) vs autres erreurs (transient).
+	/// Retourne (Value, IsNotFound, IsError). Pour les cas critiques où il ne faut PAS
+	/// confondre "ressource absente" et "API down" (sinon on écrase la BDD avec des defaults).
+	/// </summary>
+	public static async Task<(T Value, bool IsNotFound, bool IsError)> GetWithStatusAsync<T>( string path ) where T : class
+	{
+		try
+		{
+			var resp = await Http.RequestAsync( $"{BaseUrl}/{path}", "GET", null, _headers );
+			if ( resp is null )                                  return ( null, false, true );
+			if ( (int)resp.StatusCode == 404 )                   return ( null, true,  false );
+			if ( !resp.IsSuccessStatusCode )                     return ( null, false, true );
+
+			var json = await resp.Content.ReadAsStringAsync();
+			var val  = JsonSerializer.Deserialize<T>( json, _jsonOpts );
+			return ( val, false, false );
+		}
+		catch ( Exception ex )
+		{
+			Log.Warning( ex, $"[DarkHttpClient] GET {path} (status-aware) échoue." );
+			return ( null, false, true );
+		}
+	}
+
 	// ── POST avec body JSON ───────────────────────────────────────────────
 	public static async Task<bool> PostAsync( string path, object body )
 	{
