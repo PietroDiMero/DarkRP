@@ -1,8 +1,8 @@
 {
   "Title": "Pietro DarkRP",
   "Type": "game",
-  "Org": "pietrodimero",
-  "Ident": "pietrodarkrp",
+  "Org": "sousoup",
+  "Ident": "darkrp2",
   "Schema": 1,
   "IncludeSourceFiles": false,
   "Resources": "/fonts/*\n/UI/*.png\n/ui/*.png\n/ui/*\n/ui/weapons/melee/*",
