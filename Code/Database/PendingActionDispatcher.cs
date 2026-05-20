@@ -94,15 +94,17 @@ public static class PendingActionDispatcher
 	private static async Task RunRestartCountdownAsync( int totalSeconds, string reason, string adminName )
 	{
 		var chat = Game.ActiveScene?.Get<Chat>();
-		string reasonSuffix = string.IsNullOrWhiteSpace( reason ) ? "" : $" — {reason}";
+		string subText = string.IsNullOrWhiteSpace( reason )
+			? $"Lancé par {adminName}"
+			: $"Lancé par {adminName} · {reason}";
 
-		// Annonce initiale
+		// Banner global centre haut (synchro tous les clients via [Sync])
+		RestartBanner.ShowGlobal( $"Redémarrage dans {FormatDuration( totalSeconds )}", subText );
+
+		// Annonce initiale en chat
 		chat?.AddSystemText(
-			$"⚠ REDÉMARRAGE PROGRAMMÉ dans {FormatDuration( totalSeconds )} (par {adminName}){reasonSuffix}",
+			$"⚠ REDÉMARRAGE PROGRAMMÉ dans {FormatDuration( totalSeconds )} (par {adminName})",
 			"🔄" );
-
-		// Intervalles : annonce à 10m, 5m, 2m, 1m, 30s, 15s, 10s, 5s, 4, 3, 2, 1
-		var milestones = new[] { 600, 300, 120, 60, 30, 15, 10, 5, 4, 3, 2, 1 };
 
 		var sinceStart = 0;
 		while ( sinceStart < totalSeconds )
@@ -111,29 +113,35 @@ public static class PendingActionDispatcher
 			sinceStart++;
 			var remaining = totalSeconds - sinceStart;
 
-			if ( milestones.Contains( remaining ) && remaining > 0 )
+			// Update du banner toutes les secondes pour avoir un vrai countdown live
+			if ( remaining > 0 )
 			{
-				chat?.AddSystemText(
-					$"⚠ Redémarrage dans {FormatDuration( remaining )}{reasonSuffix}", "🔄" );
-				// Notice rouge en plein écran pour chaque joueur
-				foreach ( var conn in Connection.All )
-				{
-					Notices.SendNotice( conn, "warning", Color.Red,
-						$"Redémarrage dans {FormatDuration( remaining )}", 3f );
-				}
+				RestartBanner.ShowGlobal( $"Redémarrage dans {FormatDuration( remaining )}", subText );
 			}
 		}
 
-		// Fin du countdown : force-save tout
+		// Fin du countdown
+		RestartBanner.ShowGlobal( "Sauvegarde en cours...", "Le serveur va redémarrer" );
 		chat?.AddSystemText( "🔴 REDÉMARRAGE IMMINENT — Sauvegarde en cours...", "🔄" );
 		await ForceSaveAllPlayersAsync();
-		chat?.AddSystemText( "✅ Données sauvegardées. Le serveur peut être redémarré.", "✅" );
+		chat?.AddSystemText( "✅ Données sauvegardées.", "✅" );
 
-		foreach ( var conn in Connection.All )
+		// KICK tous les joueurs proprement avec un message
+		RestartBanner.ShowGlobal( "Serveur en redémarrage", "Reconnecte-toi dans ~30s" );
+		await GameTask.DelaySeconds( 2f );  // laisse 2s pour que le banner soit vu
+
+		foreach ( var conn in Connection.All.Where( c => !c.IsHost ).ToList() )
 		{
-			Notices.SendNotice( conn, "warning", Color.Red,
-				"Serveur en cours de redémarrage", 10f );
+			try
+			{
+				conn.Kick( "Serveur en redémarrage — reconnecte-toi dans 30s" );
+			}
+			catch { /* ignore si déjà déconnecté */ }
 		}
+
+		// Eteint le banner apres 5s (au cas ou il reste quelqu un qui n a pas ete kick)
+		await GameTask.DelaySeconds( 5f );
+		RestartBanner.HideGlobal();
 	}
 
 	private static async Task ForceSaveAllPlayersAsync()

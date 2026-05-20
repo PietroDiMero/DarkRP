@@ -256,6 +256,37 @@
           "Children": []
         },
         {
+          "__guid": "ab8e5d12-3f47-4c89-b2a1-9e7f6c5d3b8a",
+          "__version": 2,
+          "Flags": 0,
+          "Name": "Restart Banner",
+          "Position": "0,0,0",
+          "Rotation": "0,0,0,1",
+          "Scale": "1,1,1",
+          "Tags": "",
+          "Enabled": true,
+          "NetworkMode": 2,
+          "NetworkFlags": 0,
+          "NetworkOrphaned": 0,
+          "NetworkTransmit": true,
+          "OwnerTransfer": 1,
+          "Components": [
+            {
+              "__type": "Sandbox.RestartBanner",
+              "__guid": "d4e7a8c2-5b91-4f3e-a6d8-1c2b9e7f4a5d",
+              "__enabled": true,
+              "Flags": 0,
+              "OnComponentDestroy": null,
+              "OnComponentDisabled": null,
+              "OnComponentEnabled": null,
+              "OnComponentFixedUpdate": null,
+              "OnComponentStart": null,
+              "OnComponentUpdate": null
+            }
+          ],
+          "Children": []
+        },
+        {
           "__guid": "f1a4b62e-9c8e-4d1a-b3e7-7a93dc0e1f54",
           "__version": 2,
           "Flags": 0,

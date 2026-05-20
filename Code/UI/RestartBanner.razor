@@ -1,0 +1,56 @@
+@using Sandbox;
+@using Sandbox.UI;
+@namespace Sandbox
+@inherits PanelComponent
+
+@if ( !string.IsNullOrEmpty( BannerText ) && Visible )
+{
+	<root>
+		<div class="banner">
+			<div class="banner-icon">🔄</div>
+			<div class="banner-content">
+				<div class="banner-title">@BannerText</div>
+				@if ( !string.IsNullOrEmpty( SubText ) )
+				{
+					<div class="banner-sub">@SubText</div>
+				}
+			</div>
+		</div>
+	</root>
+}
+
+@code
+{
+	/// Texte principal (ex: "Redémarrage dans 1min").
+	[Sync( SyncFlags.FromHost )]
+	public string BannerText { get; set; } = "";
+
+	/// Sous-texte optionnel (ex: raison du restart).
+	[Sync( SyncFlags.FromHost )]
+	public string SubText { get; set; } = "";
+
+	/// Visible ON/OFF synchronisé hôte → clients.
+	[Sync( SyncFlags.FromHost )]
+	public bool Visible { get; set; } = false;
+
+	protected override int BuildHash() => HashCode.Combine( BannerText, SubText, Visible );
+
+	/// <summary>Helper hôte : show banner avec texte + raison. Auto-broadcast aux clients via Sync.</summary>
+	public static void ShowGlobal( string text, string subtext = "" )
+	{
+		if ( !Networking.IsHost ) return;
+		var banner = Game.ActiveScene?.GetAllComponents<RestartBanner>().FirstOrDefault();
+		if ( banner is null ) return;
+		banner.BannerText = text;
+		banner.SubText    = subtext;
+		banner.Visible    = true;
+	}
+
+	public static void HideGlobal()
+	{
+		if ( !Networking.IsHost ) return;
+		var banner = Game.ActiveScene?.GetAllComponents<RestartBanner>().FirstOrDefault();
+		if ( banner is null ) return;
+		banner.Visible = false;
+	}
+}
