@@ -91,7 +91,8 @@ public static class WeaponShopCatalog
 		if ( item is null )
 			return false;
 
-		return !item.GunDealerOnly || IsGunDealer( player );
+		// Pietro DarkRP : seul le Gun Dealer voit/achete des armes.
+		return IsGunDealer( player );
 	}
 
 	public static bool CanPlayerBuy( Player player, string prefabPath, out string reason )

@@ -17,7 +17,13 @@
 			</div>
 
 			<div class="name-block">
-				<label class="name">@Player.DisplayName</label>
+				<label class="name">
+					@if ( Player.PublicId > 0 )
+					{
+						<span class="public-id">[@Player.PublicId]</span>
+					}
+					@Player.DisplayName
+				</label>
 				@if ( Player.IsWanted )
 				{
 					<label class="wanted-label">WANTED</label>
@@ -73,5 +79,5 @@
         return Math.Clamp( 1f + s * 0.6f, 1f, 1.6f ).ToString( "0.##" );
     }
 
-    protected override int BuildHash() => System.HashCode.Combine( Network.Owner, Player?.DisplayName, Player?.IsWanted, IsVoicePlaying, Player.FindLocalPlayer()?.WantsHideHud ?? false, IsVoicePlaying ? Time.Now : 0f );
+    protected override int BuildHash() => System.HashCode.Combine( Network.Owner, Player?.DisplayName, Player?.PublicId, Player?.IsWanted, IsVoicePlaying, Player.FindLocalPlayer()?.WantsHideHud ?? false, IsVoicePlaying ? Time.Now : 0f );
 }

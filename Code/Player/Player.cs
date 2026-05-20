@@ -22,6 +22,12 @@ public sealed partial class Player : Component, Component.IDamageable, PlayerCon
 
 	[Sync( SyncFlags.FromHost )] public PlayerData PlayerData { get; set; }
 
+	/// <summary>
+	/// ID public sequentiel assigne par PlayerIdSystem au connect (ex: 521).
+	/// Affiche dans les nameplates : "[521] PseudoRP". Reset au reboot serveur.
+	/// </summary>
+	[Sync( SyncFlags.FromHost )] public int PublicId { get; set; } = 0;
+
 	public Transform EyeTransform
 	{
 		get

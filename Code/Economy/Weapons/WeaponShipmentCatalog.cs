@@ -84,7 +84,8 @@ public static class WeaponShipmentCatalog
 		if ( item is null )
 			return false;
 
-		return !item.GunDealerOnly || WeaponShopCatalog.IsGunDealer( player );
+		// Pietro DarkRP : shipments reservees au Gun Dealer.
+		return WeaponShopCatalog.IsGunDealer( player );
 	}
 
 	public static bool CanPlayerBuy( Player player, string weaponPrefabPath, out string reason )

@@ -417,6 +417,19 @@ public static class ChatCommandSystem
 
 		if ( long.TryParse( query, out var steamId ) )
 		{
+			// Si le nombre est petit (< 100000), on essaie d abord le PublicId
+			// assigne par PlayerIdSystem (ex: /tpto 521 ).
+			// Les SteamIDs reels sont des nombres de 17 chiffres, donc pas de conflit.
+			if ( steamId is > 0 and < 100000 )
+			{
+				var byPublicId = PlayerIdSystem.GetPlayerById( (int)steamId );
+				if ( byPublicId.IsValid() )
+				{
+					player = byPublicId;
+					return true;
+				}
+			}
+
 			player = players.FirstOrDefault( x => x.SteamId == steamId );
 			if ( player.IsValid() )
 				return true;

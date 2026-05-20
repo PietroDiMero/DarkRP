@@ -69,19 +69,39 @@ public sealed class ServerHeartbeatService : Component
 	{
 		try
 		{
+			var db = DarkDatabase.Instance;
 			var players = Connection.All
 				.Where( c => !c.IsHost )
 				.Select( c =>
 				{
 					var player = Player.FindForConnection( c );
+					var steamId = (long) c.SteamId.Value;
+					// Live push : pour chaque joueur en ligne on update son playtime/kills/deaths en BDD
+					// (intervalle = HeartbeatIntervalSeconds, par defaut 30s).
+					// Ca permet a la fiche joueur du panel d afficher des stats fraiches sans
+					// attendre la deconnexion.
+					if ( db is not null && player is not null )
+					{
+						_ = DarkHttpClient.PatchAsync( $"players/{steamId}/live-stats", new
+						{
+							money    = player.Money,
+							kills    = player.PlayerData?.Kills ?? 0,
+							deaths   = player.PlayerData?.Deaths ?? 0,
+							// playtime_delta_seconds : on envoie l increment depuis le dernier heartbeat
+							playtime_delta_seconds = (int) HeartbeatIntervalSeconds,
+						} );
+					}
 					return new
 					{
-						steam_id  = (long) c.SteamId.Value,
+						steam_id  = steamId,
 						name      = c.DisplayName,
 						rp_name   = player?.PlayerData?.DisplayName,
 						job       = player?.JobTitle,
 						money     = player?.Money ?? 0,
+						kills     = player?.PlayerData?.Kills ?? 0,
+						deaths    = player?.PlayerData?.Deaths ?? 0,
 						staff_role = player is null ? 0 : (int) player.AdminRole,
+						public_id = PlayerIdSystem.GetIdForSteam( steamId ),
 					};
 				} )
 				.ToArray();

@@ -73,7 +73,8 @@ public static class AmmoShopCatalog
 		if ( item is null )
 			return false;
 
-		return !item.GunDealerOnly || WeaponShopCatalog.IsGunDealer( player );
+		// Pietro DarkRP : munitions reservees au Gun Dealer.
+		return WeaponShopCatalog.IsGunDealer( player );
 	}
 
 	public static bool CanPlayerBuy( Player player, string prefabPath, out string reason )

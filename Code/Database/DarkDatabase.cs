@@ -125,6 +125,9 @@ public sealed partial class DarkDatabase : GameObjectSystem<DarkDatabase>, Compo
 		var steamId = (long)connection.SteamId.Value;
 		_sessions[steamId] = DateTime.UtcNow;
 
+		// Assigne un ID public sequentiel pour cette session (#1, #2, ...)
+		PlayerIdSystem.AssignFor( connection );
+
 		_ = RegisterOrUpdatePlayerAsync( connection );
 	}
 
@@ -136,6 +139,9 @@ public sealed partial class DarkDatabase : GameObjectSystem<DarkDatabase>, Compo
 		var steamId = (long)connection.SteamId.Value;
 		UpdatePlaytime( steamId );
 		_sessions.Remove( steamId );
+
+		// Libere l ID public (le prochain join reprendra le plus petit dispo)
+		PlayerIdSystem.Release( connection );
 
 		if ( _players.TryGetValue( steamId, out var record ) )
 		{

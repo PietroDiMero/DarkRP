@@ -67,6 +67,13 @@ Nameplate
 			text-overflow: ellipsis;
         }
 
+        .public-id
+        {
+            color: rgba(255, 255, 255, 0.65);
+            margin-right: 4px;
+            font-weight: 700;
+        }
+
         .wanted-label
         {
             font-family: $body-font;
