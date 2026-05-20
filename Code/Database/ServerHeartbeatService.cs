@@ -40,6 +40,18 @@ public sealed class ServerHeartbeatService : Component
 		_sinceLastHeartbeat = float.MaxValue; // push immédiat au démarrage
 		_sinceServerStart   = 0;
 		Log.Info( "[Heartbeat] Démarré." );
+
+		// Annonce darkapi → Discord "serveur en ligne" (fire-and-forget).
+		// darkapi a le webhook URL en env, lui forward la requete.
+		if ( Networking.IsHost )
+			_ = DarkHttpClient.PostAsync( "server/discord-status", new { up = true, detail = "Le serveur S&Box vient de démarrer." } );
+	}
+
+	protected override void OnDisabled()
+	{
+		base.OnDisabled();
+		if ( Networking.IsHost )
+			_ = DarkHttpClient.PostAsync( "server/discord-status", new { up = false, detail = "Le serveur s'arrête (shutdown propre)." } );
 	}
 
 	protected override void OnFixedUpdate()
