@@ -434,12 +434,14 @@ public static class PendingActionDispatcher
 			return false;
 		}
 
-		// Cherche la JobDefinition par son code (ResourceName ou via Title slugifié)
-		// La JobDefinition côté C# n'a pas forcément un champ "code" explicite : on cherche
-		// par ResourceName (= nom de fichier .jobdef sans extension) en première tentative.
+		// Cherche la JobDefinition. Le panel peut envoyer :
+		//   - le ResourcePath complet : "jobs/mob_boss.jobdef"
+		//   - le ResourceName seul    : "mob_boss"
+		// On essaie les 2 formes pour etre tolerant.
 		var definition = ResourceLibrary.GetAll<JobDefinition>()
 			.FirstOrDefault( j =>
-				string.Equals( j.ResourceName, jobCode, StringComparison.OrdinalIgnoreCase )
+				string.Equals( j.ResourcePath, jobCode, StringComparison.OrdinalIgnoreCase )
+				|| string.Equals( j.ResourceName, jobCode, StringComparison.OrdinalIgnoreCase )
 				|| string.Equals( j.ResourceName?.Replace( "_", "-" ), jobCode, StringComparison.OrdinalIgnoreCase )
 			);
 
