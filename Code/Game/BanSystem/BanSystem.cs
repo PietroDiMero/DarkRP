@@ -19,28 +19,45 @@ public sealed class BanSystem : GameObjectSystem<BanSystem>, Component.INetworkL
 
 	bool Component.INetworkListener.AcceptConnection( Connection connection, ref string reason )
 	{
-		if ( !_bans.TryGetValue( connection.SteamId, out var entry ) )
-			return true;
+		var sid = (long)connection.SteamId.Value;
 
-		// MySQL est la source de verite. Si DarkDatabase dit que ce ban est inactif/inexistant,
-		// le BanSystem LocalData est perime (l'unban via panel n'avait pas invalide ce cache).
-		// On nettoie le cache local et on autorise la connexion.
+		// ═══ SOURCE PRIMAIRE : MySQL via DarkDatabase ═══════════════════════════
+		// On consulte la banlist MySQL (mirror en cache memoire) AVANT toute autre
+		// chose. Ca garantit qu'un ban/unban fait via le panel web prend effet
+		// immediatement (le cache DarkDatabase._bans est sync a chaque op).
 		var db = Sandbox.DarkDatabase.Instance;
 		if ( db is not null )
 		{
-			var sid = (long)connection.SteamId.Value;
 			var dbBan = db.GetBan( sid );
-			if ( dbBan is null || !dbBan.IsActive )
+			bool banActif = dbBan is not null
+				&& dbBan.IsActive
+				&& ( !dbBan.ExpiresAt.HasValue || dbBan.ExpiresAt.Value > System.DateTime.UtcNow );
+
+			if ( banActif )
 			{
-				_bans.Remove( connection.SteamId );
+				reason = $"You're banned from this server: {dbBan.Reason}";
+				Sandbox.Log.Info( $"[BanSystem] Connexion refusee pour {sid} : ban actif MySQL (\"{dbBan.Reason}\")." );
+				return false;
+			}
+
+			// MySQL = pas de ban actif. On purge l'entree LocalData si elle existe
+			// (le cache local etait perime, possible apres unban panel).
+			if ( _bans.Remove( connection.SteamId ) )
+			{
 				Save();
 				SendBannedListToAdmins();
-				Sandbox.Log.Info( $"[BanSystem] Cache LocalData perime pour {sid} (MySQL = pas de ban actif). Cache nettoye, connexion acceptee." );
-				return true;
+				Sandbox.Log.Info( $"[BanSystem] Cache LocalData perime nettoye pour {sid} (MySQL OK)." );
 			}
+			return true;
 		}
 
+		// ═══ FALLBACK : DarkDatabase pas dispo (boot tres tot ou panne BDD) ═════
+		// On consulte le cache LocalData comme garde-fou.
+		if ( !_bans.TryGetValue( connection.SteamId, out var entry ) )
+			return true;
+
 		reason = $"You're banned from this server: {entry.Reason}";
+		Sandbox.Log.Warning( $"[BanSystem] Connexion refusee pour {sid} via fallback LocalData (DarkDatabase indispo)." );
 		return false;
 	}
 
