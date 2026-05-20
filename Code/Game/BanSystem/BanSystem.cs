@@ -22,6 +22,24 @@ public sealed class BanSystem : GameObjectSystem<BanSystem>, Component.INetworkL
 		if ( !_bans.TryGetValue( connection.SteamId, out var entry ) )
 			return true;
 
+		// MySQL est la source de verite. Si DarkDatabase dit que ce ban est inactif/inexistant,
+		// le BanSystem LocalData est perime (l'unban via panel n'avait pas invalide ce cache).
+		// On nettoie le cache local et on autorise la connexion.
+		var db = Sandbox.DarkDatabase.Instance;
+		if ( db is not null )
+		{
+			var sid = (long)connection.SteamId.Value;
+			var dbBan = db.GetBan( sid );
+			if ( dbBan is null || !dbBan.IsActive )
+			{
+				_bans.Remove( connection.SteamId );
+				Save();
+				SendBannedListToAdmins();
+				Sandbox.Log.Info( $"[BanSystem] Cache LocalData perime pour {sid} (MySQL = pas de ban actif). Cache nettoye, connexion acceptee." );
+				return true;
+			}
+		}
+
 		reason = $"You're banned from this server: {entry.Reason}";
 		return false;
 	}
