@@ -36,7 +36,7 @@ public sealed class BanSystem : GameObjectSystem<BanSystem>, Component.INetworkL
 			if ( banActif )
 			{
 				reason = $"You're banned from this server: {dbBan.Reason}";
-				Sandbox.Log.Info( $"[BanSystem] Connexion refusee pour {sid} : ban actif MySQL (\"{dbBan.Reason}\")." );
+				Log.Info( $"[BanSystem] Connexion refusee pour {sid} : ban actif MySQL (\"{dbBan.Reason}\")." );
 				return false;
 			}
 
@@ -46,7 +46,7 @@ public sealed class BanSystem : GameObjectSystem<BanSystem>, Component.INetworkL
 			{
 				Save();
 				SendBannedListToAdmins();
-				Sandbox.Log.Info( $"[BanSystem] Cache LocalData perime nettoye pour {sid} (MySQL OK)." );
+				Log.Info( $"[BanSystem] Cache LocalData perime nettoye pour {sid} (MySQL OK)." );
 			}
 			return true;
 		}
@@ -57,7 +57,7 @@ public sealed class BanSystem : GameObjectSystem<BanSystem>, Component.INetworkL
 			return true;
 
 		reason = $"You're banned from this server: {entry.Reason}";
-		Sandbox.Log.Warning( $"[BanSystem] Connexion refusee pour {sid} via fallback LocalData (DarkDatabase indispo)." );
+		Log.Warning( $"[BanSystem] Connexion refusee pour {sid} via fallback LocalData (DarkDatabase indispo)." );
 		return false;
 	}
 
