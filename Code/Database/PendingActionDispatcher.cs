@@ -126,7 +126,18 @@ public static class PendingActionDispatcher
 	private static async Task<bool> HandleUnbanAsync( PendingAction a )
 	{
 		// L'unban est déjà persisté côté panel (is_active=0 sur bans).
-		// Côté jeu, on n'a juste rien à faire sauf si on a un cache.
+		// MAIS le BanSystem côté C# garde un cache LocalData ("bans"), c'est lui
+		// qui est consulté par AcceptConnection. Sans cette invalidation, le joueur
+		// reste kické "You're banned" même après unban via le panel web.
+		BanSystem.Current?.Unban( (SteamId)a.TargetSteamId );
+
+		// Et le cache DarkDatabase._bans utilisé par l'admin panel ingame
+		var db = DarkDatabase.Instance;
+		if ( db is not null && db.GetBan( a.TargetSteamId ) is { } ban )
+		{
+			ban.IsActive = false;
+		}
+
 		await DarkHttpClient.LogAdminActionAsync( a.CreatedBy, a.GetPayloadString( "admin_name" ),
 			a.TargetSteamId, null, "unban", "Ban levé depuis le panel" );
 		return true;
