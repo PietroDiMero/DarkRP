@@ -55,6 +55,7 @@ public static class PendingActionDispatcher
 				"announce"        => await HandleAnnounceAsync( action ),
 				"refresh_jobs"    => await HandleRefreshJobsAsync( action ),
 				"refresh_economy" => await HandleRefreshEconomyAsync( action ),
+				"server_restart_warning" => await HandleServerRestartWarningAsync( action ),
 				_                 => HandleUnknown( action ),
 			};
 
@@ -71,6 +72,102 @@ public static class PendingActionDispatcher
 			if ( !string.IsNullOrEmpty( firstStackLine ) ) msg += $" @ {firstStackLine}";
 			return DispatchResult.Failure( msg );
 		}
+	}
+
+	// ════════════════════════════════════════════════════════ RESTART ANNOUNCE
+	// Affiche un countdown en chat rouge global + force-save toutes les BDD a la fin.
+	// Le restart effectif du process doit etre fait via le panel YorkHost.
+	private static async Task<bool> HandleServerRestartWarningAsync( PendingAction a )
+	{
+		int delay     = (int) a.GetPayloadLong( "delay_seconds" );
+		if ( delay <= 0 ) delay = 60;
+		var reason    = a.GetPayloadString( "reason" ) ?? "";
+		var adminName = a.GetPayloadString( "admin_name" ) ?? "Système";
+
+		Log.Info( $"[Restart] Countdown lancé : {delay}s (par {adminName}, raison: {reason})" );
+
+		// Lance le countdown asynchrone (ne bloque pas le poller)
+		_ = RunRestartCountdownAsync( delay, reason, adminName );
+		return true;
+	}
+
+	private static async Task RunRestartCountdownAsync( int totalSeconds, string reason, string adminName )
+	{
+		var chat = Game.ActiveScene?.Get<Chat>();
+		string reasonSuffix = string.IsNullOrWhiteSpace( reason ) ? "" : $" — {reason}";
+
+		// Annonce initiale
+		chat?.AddSystemText(
+			$"⚠ REDÉMARRAGE PROGRAMMÉ dans {FormatDuration( totalSeconds )} (par {adminName}){reasonSuffix}",
+			"🔄" );
+
+		// Intervalles : annonce à 10m, 5m, 2m, 1m, 30s, 15s, 10s, 5s, 4, 3, 2, 1
+		var milestones = new[] { 600, 300, 120, 60, 30, 15, 10, 5, 4, 3, 2, 1 };
+
+		var sinceStart = 0;
+		while ( sinceStart < totalSeconds )
+		{
+			await GameTask.DelaySeconds( 1f );
+			sinceStart++;
+			var remaining = totalSeconds - sinceStart;
+
+			if ( milestones.Contains( remaining ) && remaining > 0 )
+			{
+				chat?.AddSystemText(
+					$"⚠ Redémarrage dans {FormatDuration( remaining )}{reasonSuffix}", "🔄" );
+				// Notice rouge en plein écran pour chaque joueur
+				foreach ( var conn in Connection.All )
+				{
+					Notices.SendNotice( conn, "warning", Color.Red,
+						$"Redémarrage dans {FormatDuration( remaining )}", 3f );
+				}
+			}
+		}
+
+		// Fin du countdown : force-save tout
+		chat?.AddSystemText( "🔴 REDÉMARRAGE IMMINENT — Sauvegarde en cours...", "🔄" );
+		await ForceSaveAllPlayersAsync();
+		chat?.AddSystemText( "✅ Données sauvegardées. Le serveur peut être redémarré.", "✅" );
+
+		foreach ( var conn in Connection.All )
+		{
+			Notices.SendNotice( conn, "warning", Color.Red,
+				"Serveur en cours de redémarrage", 10f );
+		}
+	}
+
+	private static async Task ForceSaveAllPlayersAsync()
+	{
+		var db = DarkDatabase.Instance;
+		if ( db is null ) return;
+
+		foreach ( var p in Game.ActiveScene.GetAllComponents<Player>() )
+		{
+			if ( p.SteamId <= 0 ) continue;
+			// Sync de l'argent + kills + deaths vers BDD
+			db.SyncMoneyFromPlayer( p.SteamId, p.Money );
+			// Le UpdatePlaytime + SavePlayerAsync sera fait par OnDisconnected, mais on
+			// declenche aussi un save complet maintenant pour eviter les pertes si crash.
+			_ = DarkHttpClient.PatchAsync( $"players/{p.SteamId}/live-stats", new
+			{
+				money    = p.Money,
+				kills    = p.PlayerData?.Kills ?? 0,
+				deaths   = p.PlayerData?.Deaths ?? 0,
+				playtime_delta_seconds = 0,   // pas de delta supplementaire ici
+			} );
+		}
+		await GameTask.DelaySeconds( 0.5f );  // laisse le temps aux requetes de partir
+	}
+
+	private static string FormatDuration( int seconds )
+	{
+		if ( seconds >= 60 )
+		{
+			int m = seconds / 60;
+			int s = seconds % 60;
+			return s == 0 ? $"{m}min" : $"{m}min {s}s";
+		}
+		return $"{seconds}s";
 	}
 
 	// ─────────────────────────────────────────────────────────── Helpers
