@@ -259,6 +259,40 @@ JobMenu > root
 	}
 }
 
+/* ── Footer Discord ── */
+.job-footer
+{
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 12px 20px;
+	border-top: 1px solid rgba(255, 255, 255, 0.08);
+	background: linear-gradient(180deg, transparent, rgba(88, 101, 242, 0.08));
+	flex-shrink: 0;
+	font-size: 12px;
+}
+
+.job-footer-label
+{
+	color: $menu-text;
+	opacity: 0.8;
+}
+
+.job-footer-link
+{
+	color: #5865f2;
+	font-weight: 700;
+	cursor: pointer;
+	text-decoration: underline;
+
+	&:hover
+	{
+		color: #7289da;
+		filter: drop-shadow(0 0 6px rgba(88, 101, 242, 0.5));
+	}
+}
+
 /* ── Badges ── */
 .job-badge
 {

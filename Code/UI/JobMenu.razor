@@ -66,6 +66,11 @@
 
 			</div>
 
+			<div class="job-footer">
+				<span class="job-footer-label">💬 Rejoins la communauté</span>
+				<a href="https://discord.gg/JtPWaXdTRP" target="_blank" class="job-footer-link">discord.gg/JtPWaXdTRP</a>
+			</div>
+
 		</div>
 	}
 
@@ -80,8 +85,8 @@
 
 	protected override void OnUpdate()
 	{
-		// F1 ouvre/ferme le menu. On utilise Input.Keyboard.Pressed pour bypass les InputActions S&Box.
-		if ( Input.Pressed( "JobMenu" ) || Input.Keyboard.Pressed( "F1" ) )
+		// J ouvre/ferme le menu (F1 etait intercepte par l overlay S&Box engine).
+		if ( Input.Pressed( "JobMenu" ) || Input.Keyboard.Pressed( "J" ) )
 			TogglePanel();
 
 		// ESC ferme
