@@ -25,6 +25,34 @@ public static class DarkHttpClient
 		PropertyNameCaseInsensitive = true,
 	};
 
+	/// <summary>
+	/// Appelé DEPUIS LA MACHINE DU JOUEUR (client) pour faire enregistrer
+	/// sa vraie IP par darkapi (qui capture REMOTE_ADDR côté PHP).
+	/// Workaround pour les configs S&Box où `connection.Address` côté serveur
+	/// renvoie "unknown" / vide.
+	/// </summary>
+	public static async Task<bool> ReportLocalClientIpAsync( long steamId )
+	{
+		try
+		{
+			var content = new System.Net.Http.StringContent( "{}", System.Text.Encoding.UTF8, "application/json" );
+			var resp = await Http.RequestAsync( $"{BaseUrl}/sessions/{steamId}/report-ip", "POST", content, _headers );
+			if ( resp is null || !resp.IsSuccessStatusCode )
+			{
+				Log.Warning( $"[DarkHttpClient] report-ip {steamId} a echoue (status: {resp?.StatusCode})" );
+				return false;
+			}
+			var body = await resp.Content.ReadAsStringAsync();
+			Log.Info( $"[DarkHttpClient] ✅ IP rapportée pour {steamId} : {body}" );
+			return true;
+		}
+		catch ( Exception ex )
+		{
+			Log.Warning( ex, $"[DarkHttpClient] report-ip {steamId} exception." );
+			return false;
+		}
+	}
+
 	// ── Ping ─────────────────────────────────────────────────────────────
 	public static async Task<bool> PingAsync()
 	{

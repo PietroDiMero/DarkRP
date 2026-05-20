@@ -71,7 +71,16 @@ public sealed partial class Player : Component, Component.IDamageable, PlayerCon
 	protected override void OnStart()
 	{
 		if ( IsLocalPlayer )
+		{
 			LocalPlayer = this;
+
+			// Workaround S&Box "Connection.Address = unknown" sur certains hôtes :
+			// le client lui-même appelle darkapi pour faire logger sa vraie IP
+			// (capturée via $_SERVER['REMOTE_ADDR'] côté PHP). Fire-and-forget.
+			var mySteamId = SteamId;
+			if ( mySteamId > 0 )
+				_ = Sandbox.DarkHttpClient.ReportLocalClientIpAsync( mySteamId );
+		}
 
 		var targets = Scene.GetAllComponents<DeathCameraTarget>()
 			.Where( x => x.Connection == Network.Owner );
