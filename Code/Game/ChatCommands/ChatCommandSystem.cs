@@ -136,6 +136,12 @@ public static class ChatCommandSystem
 		new( "tpto", "/tpto <player>", "Te téléporter à un joueur.", TptoCommand,
 			canUse: p => p?.StaffRole >= StaffRole.Support, accessText: "staff", aliases: ["goto"] ),
 
+		new( "noclip", "/noclip", "Activer noclip + immortalité (vol + invincible).", NoclipOnCommand,
+			canUse: p => p?.StaffRole >= StaffRole.SubModerator, accessText: "sub-modo+" ),
+
+		new( "unclip", "/unclip", "Désactiver noclip + immortalité.", NoclipOffCommand,
+			canUse: p => p?.StaffRole >= StaffRole.SubModerator, accessText: "sub-modo+" ),
+
 		new( "bring", "/bring <player>", "Téléporter un joueur vers toi.", BringCommand,
 			canUse: p => p?.StaffRole >= StaffRole.Support, accessText: "staff" ),
 
@@ -829,6 +835,48 @@ public static class ChatCommandSystem
 
 		Notices.SendNotice( context.Connection, "gavel", Color.Green,
 			$"{target.DisplayName} jailed pour {minutes}min.", 3 );
+	}
+
+	/// <summary>/noclip — active vol + immortalité pour le caller (sub-modo+).</summary>
+	static void NoclipOnCommand( ChatCommandContext context )
+	{
+		var player = context.Player;
+		if ( !player.IsValid() )
+		{
+			context.Reply( "Tu dois être en jeu.", "!" );
+			return;
+		}
+		var nc = player.GetComponent<NoclipMoveMode>( true );
+		if ( nc is null )
+		{
+			context.Reply( "NoclipMoveMode introuvable sur ton Player.", "!" );
+			return;
+		}
+		nc.Enabled = true;
+		if ( player.PlayerData.IsValid() ) player.PlayerData.IsGodMode = true;
+		// Restore HP/armor max au cas ou
+		player.Health = player.MaxHealth;
+		player.Armour = player.MaxArmour;
+
+		Notices.SendNotice( context.Connection, "flight_takeoff", Color.Cyan,
+			"Noclip + immortalité activés", 3 );
+	}
+
+	/// <summary>/unclip — désactive vol + immortalité.</summary>
+	static void NoclipOffCommand( ChatCommandContext context )
+	{
+		var player = context.Player;
+		if ( !player.IsValid() )
+		{
+			context.Reply( "Tu dois être en jeu.", "!" );
+			return;
+		}
+		var nc = player.GetComponent<NoclipMoveMode>( true );
+		if ( nc is not null ) nc.Enabled = false;
+		if ( player.PlayerData.IsValid() ) player.PlayerData.IsGodMode = false;
+
+		Notices.SendNotice( context.Connection, "flight_land", Color.Yellow,
+			"Noclip + immortalité désactivés", 3 );
 	}
 
 	/// <summary>/tpto &lt;player&gt; — téléporte le caller vers la cible.</summary>
