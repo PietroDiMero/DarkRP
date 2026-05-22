@@ -16,6 +16,13 @@ public sealed partial class Player
 	public bool HasAdminAccess => (Network.Owner?.IsHost ?? false) || AdminRole >= AdminRole.Admin;
 	public bool HasSuperAdminAccess => (Network.Owner?.IsHost ?? false) || AdminRole >= AdminRole.SuperAdmin;
 
+	[Rpc.Owner]
+	public void SetNoclip( bool enabled )
+	{
+		var nc = GetComponent<NoclipMoveMode>( true );
+		if ( nc is not null ) nc.Enabled = enabled;
+	}
+
 	public void SetAdminRole( AdminRole role )
 	{
 		if ( !Networking.IsHost )

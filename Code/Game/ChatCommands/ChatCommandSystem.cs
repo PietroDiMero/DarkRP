@@ -846,13 +846,7 @@ public static class ChatCommandSystem
 			context.Reply( "Tu dois être en jeu.", "!" );
 			return;
 		}
-		var nc = player.GetComponent<NoclipMoveMode>( true );
-		if ( nc is null )
-		{
-			context.Reply( "NoclipMoveMode introuvable sur ton Player.", "!" );
-			return;
-		}
-		nc.Enabled = true;
+		player.SetNoclip( true );
 		if ( player.PlayerData.IsValid() ) player.PlayerData.IsGodMode = true;
 		// Restore HP/armor max au cas ou
 		player.Health = player.MaxHealth;
@@ -871,8 +865,7 @@ public static class ChatCommandSystem
 			context.Reply( "Tu dois être en jeu.", "!" );
 			return;
 		}
-		var nc = player.GetComponent<NoclipMoveMode>( true );
-		if ( nc is not null ) nc.Enabled = false;
+		player.SetNoclip( false );
 		if ( player.PlayerData.IsValid() ) player.PlayerData.IsGodMode = false;
 
 		Notices.SendNotice( context.Connection, "flight_land", Color.Yellow,
