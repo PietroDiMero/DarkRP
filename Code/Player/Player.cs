@@ -313,7 +313,7 @@ public sealed partial class Player : Component, Component.IDamageable, PlayerCon
 	void OnControl()
 	{
 		var noclip = GetComponent<NoclipMoveMode>( true );
-		if ( noclip is { Enabled: true } && !HasAdminAccess )
+		if ( noclip is { Enabled: true } && !HasAdminAccess && StaffRole < StaffRole.SubModerator )
 		{
 			noclip.Enabled = false;
 		}
@@ -349,7 +349,7 @@ public sealed partial class Player : Component, Component.IDamageable, PlayerCon
 
 		if ( Input.Pressed( "jump" ) )
 		{
-			if ( _timeSinceJumpPressed < 0.3f && HasAdminAccess )
+			if ( _timeSinceJumpPressed < 0.3f && (HasAdminAccess || StaffRole >= StaffRole.SubModerator) )
 			{
 				if ( noclip is not null )
 				{
