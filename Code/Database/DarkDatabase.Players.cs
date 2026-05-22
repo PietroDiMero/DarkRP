@@ -98,6 +98,9 @@ public sealed partial class DarkDatabase
 			player.SetStaffRole( record.StaffRole ); // fixe StaffRole (fin) ET AdminRole (legacy)
 			player.SetMoney( record.Money );
 
+			// Ré-applique la peine de prison si le joueur était emprisonné au déco
+			JailCellManager.ApplyJailOnConnect( player, record );
+
 			Log.Info( $"[DarkDatabase] ✅ Sync {conn.DisplayName} — " +
 			          $"argent: ${record.Money} | rôle: {record.StaffRole.GetLabel()} ({i * 250}ms)" );
 			return;

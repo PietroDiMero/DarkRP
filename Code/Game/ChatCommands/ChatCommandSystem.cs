@@ -133,6 +133,9 @@ public static class ChatCommandSystem
 		new( "jail", "/jail <player> <minutes> <reason>", "Mettre un joueur en jail.", JailCommand,
 			canUse: p => p?.StaffRole >= StaffRole.SubModerator, accessText: "sub-modo+" ),
 
+		new( "unjail", "/unjail <player>", "Libérer un joueur emprisonné.", UnjailCommand,
+			canUse: p => p?.StaffRole >= StaffRole.SubModerator, accessText: "sub-modo+", aliases: ["freejail", "release"] ),
+
 		new( "tpto", "/tpto <player>", "Te téléporter à un joueur.", TptoCommand,
 			canUse: p => p?.StaffRole >= StaffRole.Support, accessText: "staff", aliases: ["goto"] ),
 
@@ -827,17 +830,50 @@ public static class ChatCommandSystem
 		}
 		if ( reason.Length > 500 ) reason = reason[..500];
 
-		// BeginArrest avec officer = null (admin)
-		target.BeginArrest( null );
+		// BeginArrest avec durée explicite en secondes
+		var durationSeconds = minutes * 60f;
+		target.BeginArrest( null, durationSeconds );
 
-		var adminSid = (long) context.Connection.SteamId.Value;
+		// Persiste l'état jail en BDD
+		var jailUntil = System.DateTime.UtcNow.AddMinutes( minutes );
+		DarkDatabase.Instance?.SetJail( (long) target.SteamId, true, jailUntil );
+
+		var adminSid  = (long) context.Connection.SteamId.Value;
+		var adminName = context.Player?.DisplayName ?? context.Connection.DisplayName;
+
 		_ = DarkHttpClient.LogAdminActionAsync(
-			adminSid, context.Player?.DisplayName ?? context.Connection.DisplayName,
-			(long) target.SteamId, target.DisplayName,
+			adminSid, adminName, (long) target.SteamId, target.DisplayName,
 			"jail", $"{minutes}min · {reason}" );
 
 		Notices.SendNotice( context.Connection, "gavel", Color.Green,
-			$"{target.DisplayName} jailed pour {minutes}min.", 3 );
+			$"⛓ {target.DisplayName} emprisonné pour {minutes} min.", 3 );
+		Notices.SendNotice( target.Network.Owner, "gavel", Color.Orange,
+			$"Tu as été emprisonné pour {minutes} min.\nRaison : {reason}", 6 );
+	}
+
+	/// <summary>/unjail &lt;player&gt; — libère un joueur arrêté.</summary>
+	static void UnjailCommand( ChatCommandContext context )
+	{
+		if ( !TryReadPlayerAndRest( context, out var target, out _ ) ) return;
+
+		if ( !target.IsArrested )
+		{
+			context.Reply( $"{target.DisplayName} n'est pas emprisonné.", "!" );
+			return;
+		}
+
+		target.ReleaseFromArrest();
+		DarkDatabase.Instance?.SetJail( (long) target.SteamId, false );
+
+		var adminSid  = (long) context.Connection.SteamId.Value;
+		var adminName = context.Player?.DisplayName ?? context.Connection.DisplayName;
+
+		_ = DarkHttpClient.LogAdminActionAsync(
+			adminSid, adminName, (long) target.SteamId, target.DisplayName,
+			"unjail", "Libéré par admin" );
+
+		Notices.SendNotice( context.Connection, "check_circle", Color.Green,
+			$"✓ {target.DisplayName} libéré.", 3 );
 	}
 
 	/// <summary>/noclip — active vol + immortalité pour le caller (sub-modo+).</summary>

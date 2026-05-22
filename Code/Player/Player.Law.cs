@@ -6,7 +6,7 @@ public sealed partial class Player
 	public const string PoliceChiefJobDefinitionPath = "jobs/police_chief.jobdef";
 	public const string MayorJobDefinitionPath = "jobs/mayor.jobdef";
 	const float ArrestDistance = 180.0f;
-	const float ArrestDuration = 60.0f;
+	public const float ArrestDuration = 60.0f;
 	const float ArrestRunSpeedMultiplier = 0.45f;
 	float? preArrestRunSpeed;
 
@@ -178,13 +178,19 @@ public sealed partial class Player
 		}
 	}
 
-	public void BeginArrest( Player officer )
+	public void BeginArrest( Player officer, float durationSeconds = ArrestDuration )
 	{
 		if ( !Networking.IsHost || !PlayerData.IsValid() || IsArrested )
 			return;
 
+		var actualDuration = durationSeconds > 0 ? durationSeconds : ArrestDuration;
 		PlayerData.IsArrested = true;
-		PlayerData.ArrestTimeRemaining = ArrestDuration;
+		PlayerData.ArrestTimeRemaining = actualDuration;
+
+		// Persister en BDD (permet ré-application au reconnect + panel jail cells)
+		var jailUntil = System.DateTime.UtcNow.AddSeconds( actualDuration );
+		DarkDatabase.Instance?.SetJail( SteamId, true, jailUntil );
+
 		PlayerData.IsWanted = false;
 		PlayerData.WantedReason = null;
 		GameObject.Tags.Remove( "wanted" );
@@ -249,6 +255,9 @@ public sealed partial class Player
 
 		PlayerData.IsArrested = false;
 		PlayerData.ArrestTimeRemaining = 0.0f;
+
+		// Persister la libération en BDD
+		DarkDatabase.Instance?.SetJail( SteamId, false );
 
 		_ = RestoreJobClothingAsync();
 

@@ -254,29 +254,51 @@ public static class PendingActionDispatcher
 	// ═════════════════════════════════════════════════════════════ JAIL / UNJAIL
 	private static async Task<bool> HandleJailAsync( PendingAction a )
 	{
-		var player = FindPlayer( a.TargetSteamId );
+		var player  = FindPlayer( a.TargetSteamId );
+		var release = a.GetPayloadBool( "release" );
+		var reason  = a.GetPayloadString( "reason" ) ?? (release ? "Libéré par admin" : "Emprisonné par admin");
+
 		if ( player is null )
 		{
-			Log.Info( $"[Jail] Joueur {a.TargetSteamId} non connecté, jail ignoré." );
-			return true; // pas d'erreur — sera persisté en BDD quand le joueur revient
+			// Joueur hors ligne — on persiste l'état en BDD via HTTP direct
+			// (JailCellManager.ApplyJailOnConnect le lira au prochain connect)
+			if ( release )
+			{
+				await DarkHttpClient.PatchAsync( $"players/{a.TargetSteamId}/jail",
+					new { is_jailed = false, jail_until = (string)null } );
+			}
+			else
+			{
+				var durationMin = (float)a.GetPayloadLong( "minutes" );
+				var durationSec = durationMin > 0 ? durationMin * 60f : Player.ArrestDuration;
+				var jailUntil   = System.DateTime.UtcNow.AddSeconds( durationSec );
+				await DarkHttpClient.PatchAsync( $"players/{a.TargetSteamId}/jail", new
+				{
+					is_jailed  = true,
+					jail_until = jailUntil.ToString( "o" ),
+				} );
+			}
+
+			Log.Info( $"[Jail] Joueur {a.TargetSteamId} hors ligne — état jail persisté en BDD." );
+			return true;
 		}
 
-		var release = a.GetPayloadBool( "release" );
-		var reason  = a.GetPayloadString( "reason" ) ?? "Arrest par admin";
-
+		// Joueur connecté : appliquer en temps réel
+		// BeginArrest / ReleaseFromArrest appellent DarkDatabase.SetJail en interne
 		if ( release )
 		{
 			player.ReleaseFromArrest();
 		}
 		else
 		{
-			// BeginArrest accepte officer = null (le système dit "arrêté par the law")
-			player.BeginArrest( null );
+			var durationMin = (float)a.GetPayloadLong( "duration_minutes" );
+			var durationSec = durationMin > 0 ? durationMin * 60f : Player.ArrestDuration;
+			player.BeginArrest( null, durationSec );
 		}
 
 		await DarkHttpClient.LogAdminActionAsync( a.CreatedBy, a.GetPayloadString( "admin_name" ),
 			a.TargetSteamId, player.GameObject.Name,
-			release ? "release" : "jail",
+			release ? "unjail" : "jail",
 			reason );
 		return true;
 	}
