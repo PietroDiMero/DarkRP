@@ -729,6 +729,37 @@
             }
           ],
           "Children": []
+        },
+        {
+          "__guid": "d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a",
+          "__version": 2,
+          "Flags": 0,
+          "Name": "Printer Shop UI",
+          "Position": "0,0,0",
+          "Rotation": "0,0,0,1",
+          "Scale": "1,1,1",
+          "Tags": "",
+          "Enabled": true,
+          "NetworkMode": 2,
+          "NetworkFlags": 0,
+          "NetworkOrphaned": 0,
+          "NetworkTransmit": true,
+          "OwnerTransfer": 1,
+          "Components": [
+            {
+              "__type": "Sandbox.PrinterShopUi",
+              "__guid": "e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b",
+              "__enabled": true,
+              "Flags": 0,
+              "OnComponentDestroy": null,
+              "OnComponentDisabled": null,
+              "OnComponentEnabled": null,
+              "OnComponentFixedUpdate": null,
+              "OnComponentStart": null,
+              "OnComponentUpdate": null
+            }
+          ],
+          "Children": []
         }
       ]
     },
