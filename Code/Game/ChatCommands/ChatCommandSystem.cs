@@ -145,6 +145,9 @@ public static class ChatCommandSystem
 		new( "bring", "/bring <player>", "Téléporter un joueur vers toi.", BringCommand,
 			canUse: p => p?.StaffRole >= StaffRole.Support, accessText: "staff" ),
 
+		new( "position", "/position", "Affiche tes coordonnées exactes (position + angles).", PositionCommand,
+			canUse: p => p?.StaffRole >= StaffRole.Support, accessText: "staff", aliases: ["pos", "coords"] ),
+
 		// ── Élections du maire ──────────────────────────────────────────
 		new( "candidate", "/candidate <programme>", "Se présenter aux élections du maire (pendant la phase candidatures).", CandidateCommand ),
 		new( "vote", "/vote <numéro>", "Voter pour un candidat aux élections (pendant la phase vote).", VoteCommand ),
@@ -870,6 +873,23 @@ public static class ChatCommandSystem
 
 		Notices.SendNotice( context.Connection, "flight_land", Color.Yellow,
 			"Noclip + immortalité désactivés", 3 );
+	}
+
+	/// <summary>/position — affiche les coordonnées exactes du caller.</summary>
+	static void PositionCommand( ChatCommandContext context )
+	{
+		var player = context.Player;
+		if ( !player.IsValid() )
+		{
+			context.Reply( "Tu dois être en jeu.", "!" );
+			return;
+		}
+
+		var pos = player.WorldPosition;
+		var ang = player.WorldRotation.Angles();
+
+		context.Reply( $"Position : X={pos.x:F1}  Y={pos.y:F1}  Z={pos.z:F1}", "📍" );
+		context.Reply( $"Angles   : Pitch={ang.pitch:F1}  Yaw={ang.yaw:F1}  Roll={ang.roll:F1}", "🧭" );
 	}
 
 	/// <summary>/tpto &lt;player&gt; — téléporte le caller vers la cible.</summary>
