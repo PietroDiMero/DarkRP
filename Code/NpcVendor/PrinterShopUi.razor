@@ -1,0 +1,124 @@
+@using Sandbox;
+@using Sandbox.UI;
+@namespace Sandbox
+@inherits PanelComponent
+
+<root class="@(_open ? "open" : "")">
+
+    @if ( _open )
+    {
+        <div class="printershop-backdrop" @onclick="@Close"></div>
+
+        <div class="printershop-window">
+
+            <div class="printershop-header">
+                <div class="printershop-title">🖨️ @_vendorName</div>
+                <div class="printershop-close" @onclick="@Close">✕</div>
+            </div>
+
+            <div class="printershop-grid">
+                @foreach ( var def in Printers() )
+                {
+                    var canAfford = (Player.FindLocalPlayer()?.Money ?? 0) >= def.Price;
+                    var owned     = MoneyPrinter.CountOwned( Connection.Local );
+                    var maxed     = owned >= MoneyPrinterDefinition.MaxOwnedPerPlayer;
+
+                    <div class="printershop-card @(!canAfford || maxed ? "disabled" : "")"
+                         @onclick="@(() => Buy(def))">
+
+                        <div class="printershop-card-title" style="color: @ColorHex(def.Tint)">@def.Title</div>
+                        <div class="printershop-card-desc">@def.Description</div>
+
+                        <div class="printershop-card-stats">
+                            <span>💰 @FormatMoney(def.Price)</span>
+                            <span>⚡ +$@def.MoneyPerTick / @def.Interval s</span>
+                            <span>📦 Max $@def.MaxStoredMoney</span>
+                        </div>
+
+                        @if ( maxed )
+                        {
+                            <div class="printershop-card-lock">MAX (@MoneyPrinterDefinition.MaxOwnedPerPlayer/@MoneyPrinterDefinition.MaxOwnedPerPlayer)</div>
+                        }
+                        else if ( !canAfford )
+                        {
+                            <div class="printershop-card-lock">Fonds insuffisants</div>
+                        }
+                        else
+                        {
+                            <div class="printershop-card-buy">Acheter</div>
+                        }
+
+                    </div>
+                }
+            </div>
+
+            <div class="printershop-footer">
+                @{ var owned2 = MoneyPrinter.CountOwned( Connection.Local ); }
+                Printers possédés : @owned2 / @MoneyPrinterDefinition.MaxOwnedPerPlayer
+            </div>
+
+        </div>
+    }
+
+</root>
+
+@code
+{
+    bool   _open;
+    int    _vendorId;
+    string _vendorName = "Vendeur";
+
+    // ── API statique ───────────────────────────────────────────────────────
+
+    public static void Open( int vendorId )
+    {
+        var ui = Game.ActiveScene?.GetAllComponents<PrinterShopUi>().FirstOrDefault();
+        if ( ui is null ) return;
+        ui._vendorId   = vendorId;
+        ui._vendorName = "Vendeur Printers";
+        ui._open       = true;
+        ui.StateHasChanged();
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────
+
+    static IEnumerable<MoneyPrinterDefinition> Printers()
+        => MoneyPrinterDefinition.GetAll();
+
+    static string ColorHex( Color c )
+        => $"#{(int)(c.r * 255):X2}{(int)(c.g * 255):X2}{(int)(c.b * 255):X2}";
+
+    static string FormatMoney( int amount )
+        => amount >= 1000 ? $"{amount / 1000} {amount % 1000:D3}$" : $"{amount}$";
+
+    // ── Interactions ───────────────────────────────────────────────────────
+
+    void Close()
+    {
+        _open = false;
+        StateHasChanged();
+    }
+
+    void Buy( MoneyPrinterDefinition def )
+    {
+        var player = Player.FindLocalPlayer();
+        if ( player is null || !_open ) return;
+
+        var owned   = MoneyPrinter.CountOwned( Connection.Local );
+        if ( owned >= MoneyPrinterDefinition.MaxOwnedPerPlayer ) return;
+        if ( (player.Money) < def.Price ) return;
+
+        player.RequestBuyPrinter( def.ResourcePath );
+        StateHasChanged();
+    }
+
+    protected override void OnUpdate()
+    {
+        if ( _open && Input.Pressed( "menu_close" ) )
+        {
+            Close();
+            Input.Clear( "menu_close" );
+        }
+        SetClass( "open", _open );
+    }
+}

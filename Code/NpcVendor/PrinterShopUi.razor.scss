@@ -1,0 +1,140 @@
+root {
+    display: none;
+    position: absolute;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+
+    &.open {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+.printershop-backdrop {
+    position: absolute;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.55);
+}
+
+.printershop-window {
+    position: relative;
+    z-index: 10;
+    background: #1a1a2e;
+    border: 1px solid #2d2d50;
+    border-radius: 8px;
+    width: 680px;
+    max-height: 80%;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+}
+
+.printershop-header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid #2d2d50;
+}
+
+.printershop-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #e0e0ff;
+}
+
+.printershop-close {
+    font-size: 16px;
+    color: #888;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+
+    &:hover {
+        background: #2d2d50;
+        color: #fff;
+    }
+}
+
+.printershop-grid {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px;
+    overflow-y: auto;
+}
+
+.printershop-card {
+    background: #12122a;
+    border: 1px solid #2d2d50;
+    border-radius: 6px;
+    width: 144px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+
+    &:hover:not(.disabled) {
+        border-color: #5555cc;
+        background: #1e1e3f;
+    }
+
+    &.disabled {
+        opacity: 0.45;
+        cursor: default;
+    }
+}
+
+.printershop-card-title {
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.printershop-card-desc {
+    font-size: 11px;
+    color: #888;
+    line-height: 1.3;
+}
+
+.printershop-card-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 11px;
+    color: #aaa;
+    margin-top: 4px;
+}
+
+.printershop-card-buy {
+    margin-top: 6px;
+    background: #3535a0;
+    border-radius: 4px;
+    text-align: center;
+    padding: 4px;
+    font-size: 12px;
+    color: #fff;
+}
+
+.printershop-card-lock {
+    margin-top: 6px;
+    background: #333;
+    border-radius: 4px;
+    text-align: center;
+    padding: 4px;
+    font-size: 11px;
+    color: #888;
+}
+
+.printershop-footer {
+    padding: 10px 18px;
+    border-top: 1px solid #2d2d50;
+    font-size: 12px;
+    color: #666;
+    text-align: right;
+}
