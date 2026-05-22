@@ -56,6 +56,9 @@ public static class PendingActionDispatcher
 				"refresh_jobs"    => await HandleRefreshJobsAsync( action ),
 				"refresh_economy" => await HandleRefreshEconomyAsync( action ),
 				"server_restart_warning" => await HandleServerRestartWarningAsync( action ),
+				"heal"            => await HandleHealAsync( action ),
+				"revive"          => await HandleReviveAsync( action ),
+				"staff_message"   => await HandleStaffMessageAsync( action ),
 				_                 => HandleUnknown( action ),
 			};
 
@@ -661,6 +664,99 @@ public static class PendingActionDispatcher
 
 		await DarkHttpClient.LogAdminActionAsync( a.CreatedBy, a.GetPayloadString( "admin_name" ),
 			null, null, "announce", title );
+		return true;
+	}
+
+	// ═════════════════════════════════════════════════════════════ HEAL
+	// Payload : { admin_name }
+	private static async Task<bool> HandleHealAsync( PendingAction a )
+	{
+		var player = FindPlayer( a.TargetSteamId );
+		if ( player is null )
+		{
+			Log.Info( $"[Heal] Joueur {a.TargetSteamId} non connecté." );
+			return true;
+		}
+
+		player.Health = player.MaxHealth;
+		player.Armour = player.MaxArmour;
+
+		if ( player.Network.Owner is not null )
+		{
+			Notices.SendNotice( player.Network.Owner, "favorite", Color.Green,
+				"Tu as été soigné par un admin.", 4 );
+		}
+
+		await DarkHttpClient.LogAdminActionAsync( a.CreatedBy, a.GetPayloadString( "admin_name" ),
+			a.TargetSteamId, player.GameObject.Name, "heal", "HP/armor max" );
+		return true;
+	}
+
+	// ═════════════════════════════════════════════════════════════ REVIVE
+	// Payload : { admin_name }
+	// Fonctionne que le joueur soit vivant (heal) ou mort (respawn forcé).
+	private static async Task<bool> HandleReviveAsync( PendingAction a )
+	{
+		// Cas 1 : joueur vivant → simple heal
+		var player = FindPlayer( a.TargetSteamId );
+		if ( player is not null )
+		{
+			player.Health = player.MaxHealth;
+			player.Armour = player.MaxArmour;
+
+			if ( player.Network.Owner is not null )
+				Notices.SendNotice( player.Network.Owner, "favorite", Color.Green, "Tu as été revivé par un admin.", 4 );
+
+			await DarkHttpClient.LogAdminActionAsync( a.CreatedBy, a.GetPayloadString( "admin_name" ),
+				a.TargetSteamId, player.GameObject.Name, "revive", "joueur vivant → heal" );
+			return true;
+		}
+
+		// Cas 2 : joueur mort → forcer le respawn via PlayerData
+		var conn = FindConnection( a.TargetSteamId );
+		if ( conn is null )
+		{
+			Log.Info( $"[Revive] Joueur {a.TargetSteamId} non connecté." );
+			return true;
+		}
+
+		var pd = PlayerData.For( conn );
+		if ( pd is null )
+		{
+			Log.Warning( $"[Revive] PlayerData introuvable pour {a.TargetSteamId}." );
+			return false;
+		}
+
+		GameManager.Current?.SpawnPlayer( pd );
+
+		await DarkHttpClient.LogAdminActionAsync( a.CreatedBy, a.GetPayloadString( "admin_name" ),
+			a.TargetSteamId, conn.DisplayName, "revive", "respawn forcé" );
+		return true;
+	}
+
+	// ═════════════════════════════════════════════════════════════ STAFF MESSAGE
+	// Payload : { body, admin_name }
+	// Affiche le message du staff en notice rouge + dans le chat du reporter.
+	private static async Task<bool> HandleStaffMessageAsync( PendingAction a )
+	{
+		var conn = FindConnection( a.TargetSteamId );
+		if ( conn is null )
+		{
+			Log.Info( $"[StaffMessage] Joueur {a.TargetSteamId} non connecté, message ignoré." );
+			return true;
+		}
+
+		var body      = a.GetPayloadString( "body" )       ?? "";
+		var adminName = a.GetPayloadString( "admin_name" ) ?? "Staff";
+
+		// Notice flottante rouge visible même si le chat est fermé
+		Notices.SendNotice( conn, "support_agent", Color.Red,
+			$"[STAFF] {adminName} : {body}", 8 );
+
+		// Message persistant dans le chat
+		var chat = Game.ActiveScene?.GetAllComponents<Chat>().FirstOrDefault();
+		chat?.AddSystemTextTo( conn, $"[STAFF] {adminName} : {body}", "🛡️" );
+
 		return true;
 	}
 
