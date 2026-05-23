@@ -134,12 +134,9 @@ public sealed partial class Player
 		{
 			if ( HasWhitelistFor( definition ) )
 			{
-				// Admin-approved → SetJob direct
-				SetJobDefinition( definition );
+				// Admin-approved → vérif ban puis SetJob
 				_timeSinceJobChange = 0;
-				_ = ApplyJobDefinitionAsync( definition, true );
-				Notices.SendNotice( Network.Owner, "how_to_vote", Color.Green,
-					$"Tu es {definition.Title}.", 3 );
+				_ = CheckBanThenApplyAsync( definition );
 				return;
 			}
 
@@ -157,8 +154,28 @@ public sealed partial class Player
 			return;
 		}
 
-		SetJobDefinition( definition );
 		_timeSinceJobChange = 0;
+		_ = CheckBanThenApplyAsync( definition );
+	}
+
+	async Task CheckBanThenApplyAsync( JobDefinition definition )
+	{
+		if ( Network.Owner is not { } owner ) return;
+		var steamId = (long)owner.SteamId.Value;
+
+		var ban = await DarkHttpClient.CheckJobBanAsync( steamId, definition.ResourcePath );
+		if ( !IsValid ) return;
+
+		if ( ban?.Banned == true )
+		{
+			var msg = string.IsNullOrWhiteSpace( ban.Reason )
+				? $"Tu es banni du job {definition.Title}."
+				: $"Banni de {definition.Title} : {ban.Reason}";
+			Notices.SendNotice( owner, "block", Color.Red, msg, 5 );
+			return;
+		}
+
+		SetJobDefinition( definition );
 		_ = ApplyJobDefinitionAsync( definition, true );
 	}
 

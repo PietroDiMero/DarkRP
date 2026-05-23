@@ -297,4 +297,16 @@ public static class DarkHttpClient
 	/// <summary>Termine une session de connexion joueur (au départ).</summary>
 	public static Task<bool> EndSessionAsync( int sessionId )
 		=> PatchAsync( $"sessions/{sessionId}/end", new { } );
+
+	/// <summary>Résultat d'un check ban de job (GET /job-bans?steamid=X&job_code=Y).</summary>
+	public sealed class JobBanResult
+	{
+		[System.Text.Json.Serialization.JsonPropertyName( "banned" )]     public bool   Banned    { get; set; }
+		[System.Text.Json.Serialization.JsonPropertyName( "reason" )]     public string Reason    { get; set; }
+		[System.Text.Json.Serialization.JsonPropertyName( "expires_at" )] public string ExpiresAt { get; set; }
+	}
+
+	/// <summary>Vérifie si un joueur est banni d'un job donné (ResourcePath = code BDD).</summary>
+	public static Task<JobBanResult> CheckJobBanAsync( long steamId, string jobResourcePath )
+		=> GetAsync<JobBanResult>( $"job-bans?steamid={steamId}&job_code={jobResourcePath}" );
 }
