@@ -246,10 +246,12 @@ public static class ChatCommandSystem
 
 		// Si la commande est complète et attend un joueur, on suggère les noms en ligne
 		// (détection : il y a un espace dans l'input ET la commande existe ET prend un player)
+		// Note : on ne check pas CanUseCommand ici — c'est juste un preview côté client,
+		// l'accès réel est vérifié à l'exécution sur le serveur.
 		if ( input.Contains( ' ' ) && CommandTakesPlayer( commandName ) )
 		{
 			var command = FindStaticCommand( commandName );
-			if ( command is not null && CanUseCommand( player, command ) )
+			if ( command is not null )
 			{
 				return BuildPlayerArgPreviews( player, command, argumentsText, MaxSuggestions );
 			}
@@ -281,7 +283,7 @@ public static class ChatCommandSystem
 		var isNumeric = partial.Length > 0 && partial.All( char.IsDigit );
 
 		var players = Game.ActiveScene?.GetAll<Player>()
-			.Where( p => p.IsValid() && p.Network.Owner is not null && p != caller )
+			.Where( p => p.IsValid() && p.Network.Owner is not null )
 			.ToArray() ?? [];
 
 		var matches = string.IsNullOrEmpty( partial )
