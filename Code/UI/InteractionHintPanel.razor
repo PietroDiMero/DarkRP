@@ -1,0 +1,21 @@
+@namespace Sandbox
+@using Sandbox.UI
+@inherits PanelComponent
+
+<root class="@(InteractionHintState.IsActive ? "hint-visible" : "hint-hidden")">
+
+	@if ( InteractionHintState.IsActive )
+	{
+		<div class="interaction-hint">
+			<InputHint Action="@InteractionHintState.Action" />
+			<span class="hint-label">@InteractionHintState.Label</span>
+		</div>
+	}
+
+</root>
+
+@code
+{
+	protected override int BuildHash() =>
+		System.HashCode.Combine( InteractionHintState.IsActive, InteractionHintState.Label );
+}

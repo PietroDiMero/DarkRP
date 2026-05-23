@@ -1,0 +1,48 @@
+@import "/UI/Theme.scss";
+
+root
+{
+	position: absolute;
+	bottom: 200px;
+	left: 0;
+	right: 0;
+	align-items: center;
+	justify-content: center;
+	pointer-events: none;
+
+	&.hint-hidden
+	{
+		display: none;
+	}
+}
+
+.interaction-hint
+{
+	background-color: rgba(0, 0, 0, 0.55);
+	border-radius: 6px;
+	padding: 7px 14px;
+	flex-direction: row;
+	align-items: center;
+	gap: 10px;
+
+	transition: opacity 0.15s ease-in-out;
+
+	&:intro { opacity: 0; }
+	&:outro { opacity: 0; }
+
+	InputHint
+	{
+		width: 28px;
+		height: 28px;
+		flex-shrink: 0;
+	}
+
+	.hint-label
+	{
+		color: white;
+		font-size: 0.85rem;
+		font-family: $body-font;
+		font-weight: 600;
+		text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+	}
+}

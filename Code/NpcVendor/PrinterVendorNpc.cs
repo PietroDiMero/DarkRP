@@ -27,7 +27,7 @@ public sealed class PrinterVendorNpc : Component
 		var look  = player.EyeTransform.Rotation.Forward;
 		if ( Vector3.Dot( toNpc, look ) < InteractDotMin ) return;
 
-		// TODO: hint d'interaction monde (ScreenUtility indisponible dans cette version de S&Box)
+		InteractionHintState.Show( VendorName );
 
 		if ( !Input.Pressed( "use" ) ) return;
 

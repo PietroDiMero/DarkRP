@@ -62,6 +62,9 @@ public static class GangCommands
 			case "withdraw": _ = HandleWithdraw( ctx, restText );        break;
 			case "tax":      _ = HandleSetTax( ctx, restText );          break;
 			case "dissolve": _ = HandleDissolve( ctx );                  break;
+			case "chat":
+			case "c":        _ = HandleChat( ctx, restText );            break;
+			case "online":   _ = HandleOnline( ctx );                    break;
 			default:
 				ctx.Reply( $"Sous-commande '{sub}' inconnue. Tape /gang help.", "!" );
 				break;
@@ -82,6 +85,8 @@ public static class GangCommands
 		ctx.Reply( "/gang deposit|withdraw <$> ·  Caisse commune", "·" );
 		ctx.Reply( "/gang tax <pct>            ·  Taux taxe sur jobs criminels (chef)", "·" );
 		ctx.Reply( "/gang dissolve             ·  Dissoudre ton gang (chef)", "·" );
+		ctx.Reply( "/gang chat <msg>  (/gang c)·  Chat interne du gang", "·" );
+		ctx.Reply( "/gang online              ·  Voir les membres de ton gang connectés", "·" );
 	}
 
 	// ════════════════════════════════════════════════════════════════════════
@@ -461,5 +466,68 @@ public static class GangCommands
 
 		_ = DarkHttpClient.LogAdminActionAsync( sid, ctx.Player.DisplayName, null, null,
 			"gang.dissolve", $"[{my.Tag}] {my.Name}" );
+	}
+
+	// ── /gang chat <msg> ─────────────────────────────────────────────────────
+
+	static async Task HandleChat( ChatCommandContext ctx, string rest )
+	{
+		if ( string.IsNullOrWhiteSpace( rest ) ) { ctx.Reply( "Usage : /gang chat <message>", "!" ); return; }
+
+		var sid = Sid( ctx );
+		var my  = await GangApi.GetByMemberAsync( sid );
+		if ( my is null ) { ctx.Reply( "Tu n'es dans aucun gang.", "!" ); return; }
+
+		// Récupère les membres pour filtrer les joueurs online
+		var members = await GangApi.ListMembersAsync( my.Id ) ?? System.Array.Empty<GangMemberDto>();
+		var memberSids = new System.Collections.Generic.HashSet<string>(
+			members.Select( m => m.SteamId ), System.StringComparer.OrdinalIgnoreCase );
+
+		var line = $"[{my.Tag}] {ctx.Player.DisplayName} : {rest}";
+		int sent = 0;
+		foreach ( var p in Game.ActiveScene.GetAll<Player>() )
+		{
+			if ( !p.IsValid() || p.Network.Owner is null ) continue;
+			if ( !memberSids.Contains( p.SteamId.ToString() ) ) continue;
+			ctx.Chat?.AddSystemTextTo( p.Network.Owner, line, "💀" );
+			sent++;
+		}
+
+		// Si l'expéditeur lui-même n'est pas online (cas rare), on lui confirme quand même
+		if ( sent == 0 )
+			ctx.Reply( line, "💀" );
+	}
+
+	// ── /gang online ─────────────────────────────────────────────────────────
+
+	static async Task HandleOnline( ChatCommandContext ctx )
+	{
+		var sid = Sid( ctx );
+		var my  = await GangApi.GetByMemberAsync( sid );
+		if ( my is null ) { ctx.Reply( "Tu n'es dans aucun gang.", "!" ); return; }
+
+		var members = await GangApi.ListMembersAsync( my.Id ) ?? System.Array.Empty<GangMemberDto>();
+		var memberSids = new System.Collections.Generic.HashSet<string>(
+			members.Select( m => m.SteamId ), System.StringComparer.OrdinalIgnoreCase );
+
+		var onlinePlayers = Game.ActiveScene.GetAll<Player>()
+			.Where( p => p.IsValid() && p.Network.Owner is not null
+			             && memberSids.Contains( p.SteamId.ToString() ) )
+			.ToArray();
+
+		if ( onlinePlayers.Length == 0 )
+		{
+			ctx.Reply( $"[{my.Tag}] Aucun membre en ligne.", "💀" );
+			return;
+		}
+
+		ctx.Reply( $"── [{my.Tag}] Membres en ligne ({onlinePlayers.Length}/{my.MemberCount}) ──", "💀" );
+		foreach ( var p in onlinePlayers )
+		{
+			var member = members.FirstOrDefault( m => m.SteamId == p.SteamId.ToString() );
+			var role   = member?.Role ?? "member";
+			var icon   = role == GangRole.Leader ? "★" : role == GangRole.Lieutenant ? "◆" : "·";
+			ctx.Reply( $"{icon} {p.DisplayName}", "·" );
+		}
 	}
 }
