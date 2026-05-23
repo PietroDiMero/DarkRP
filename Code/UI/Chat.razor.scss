@@ -95,6 +95,13 @@ Chat
 			padding: 5px 6px;
 			border-radius: 4px;
 			background-color: rgba( #ffffff, 0.04 );
+			cursor: pointer;
+			transition: background-color 0.1s ease;
+
+			&:hover
+			{
+				background-color: rgba( #ffffff, 0.12 );
+			}
 		}
 
 		.command_usage

@@ -9,16 +9,19 @@ public enum ChatCommandAccess
 
 public sealed class ChatCommandPreview
 {
-	public ChatCommandPreview( string usage, string description, string accessText = null )
+	public ChatCommandPreview( string usage, string description, string accessText = null, string fillText = null )
 	{
 		Usage = usage;
 		Description = description;
 		AccessText = accessText;
+		FillText = fillText ?? usage;
 	}
 
 	public string Usage { get; }
 	public string Description { get; }
 	public string AccessText { get; }
+	/// <summary>Texte à injecter dans l'input quand l'utilisateur clique sur la suggestion.</summary>
+	public string FillText { get; }
 }
 
 public sealed class ChatCommandContext
@@ -163,7 +166,12 @@ public static class ChatCommandSystem
 		// ── Gangs / factions joueurs ────────────────────────────────────
 		new( "gang", "/gang <create|info|invite|accept|leave|kick|deposit|tax|...>",
 			"Gestion des gangs joueurs (tape /gang help pour la liste complète).",
-			GangCommands.Handle )
+			GangCommands.Handle ),
+
+		new( "banjob", "/banjob <joueur> <raison>",
+			"Bannir un joueur de son job actuel (permanent).", BanJobCommand,
+			canUse: p => p?.StaffRole >= StaffRole.SubModerator, accessText: "sub-modo+",
+			aliases: ["bjob", "jobban"] ),
 	];
 
 	public static IReadOnlyList<string> TokenizeArguments( string argumentsText )
@@ -255,9 +263,12 @@ public static class ChatCommandSystem
 	{
 		return commandName switch
 		{
-			"kick" or "warn" or "jail" or "tpto" or "goto" or "bring"
+			"kick" or "warn" or "jail"
+				or "unjail" or "freejail" or "release"
+				or "tpto" or "goto" or "bring"
 				or "pm" or "msg" or "tell" or "w"
-				or "givemoney" or "setmoney" or "setadmin" => true,
+				or "givemoney" or "setmoney" or "setadmin"
+				or "banjob" or "bjob" or "jobban" => true,
 			_ => false,
 		};
 	}
@@ -266,7 +277,8 @@ public static class ChatCommandSystem
 	static IReadOnlyList<ChatCommandPreview> BuildPlayerArgPreviews(
 		Player caller, ChatCommandDefinition command, string args, int limit )
 	{
-		var partial = (args ?? "").Split( ' ' ).FirstOrDefault() ?? "";
+		var partial   = (args ?? "").Split( ' ' ).FirstOrDefault() ?? "";
+		var isNumeric = partial.Length > 0 && partial.All( char.IsDigit );
 
 		var players = Game.ActiveScene?.GetAll<Player>()
 			.Where( p => p.IsValid() && p.Network.Owner is not null && p != caller )
@@ -274,24 +286,32 @@ public static class ChatCommandSystem
 
 		var matches = string.IsNullOrEmpty( partial )
 			? players
-			: players.Where( p => p.DisplayName.Contains( partial, StringComparison.OrdinalIgnoreCase ) ).ToArray();
+			: players.Where( p =>
+				p.DisplayName.Contains( partial, StringComparison.OrdinalIgnoreCase )
+				|| ( isNumeric && p.PublicId > 0 && p.PublicId.ToString().StartsWith( partial ) )
+			).ToArray();
 
-		// Indice sur les args restants (raison, montant…)
+		// Indice sur les args restants (raison, montant…) — extrait du pattern Usage après le 1er <>
 		var remainingHint = "";
-		var usage = command.Usage;
-		var firstArgEnd = usage.IndexOf( '>' );
-		if ( firstArgEnd > 0 && firstArgEnd + 1 < usage.Length )
-		{
-			remainingHint = usage[(firstArgEnd + 1)..].Trim();
-		}
+		var firstArgEnd   = command.Usage.IndexOf( '>' );
+		if ( firstArgEnd > 0 && firstArgEnd + 1 < command.Usage.Length )
+			remainingHint = command.Usage[(firstArgEnd + 1)..].Trim();
 
 		var previews = matches
 			.Take( limit )
 			.Select( p =>
 			{
-				var hint = $"/{command.Name} {p.DisplayName}";
-				if ( !string.IsNullOrWhiteSpace( remainingHint ) ) hint += " " + remainingHint;
-				return new ChatCommandPreview( hint, command.Description, GetAccessText( command ) );
+				// L'ID public (#N) est affiché dans la suggestion pour permettre une complétion par nombre
+				var idBadge  = p.PublicId > 0 ? $" [#{p.PublicId}]" : "";
+				var usage    = $"/{command.Name} {p.DisplayName}{idBadge}";
+				if ( !string.IsNullOrWhiteSpace( remainingHint ) ) usage += " " + remainingHint;
+
+				// FillText = ce qui est inséré dans l'input au clic :
+				// on préfère l'ID si dispo (court, sans espaces), sinon le nom complet
+				var token    = p.PublicId > 0 ? p.PublicId.ToString() : p.DisplayName;
+				var fillText = $"/{command.Name} {token} ";
+
+				return new ChatCommandPreview( usage, command.Description, GetAccessText( command ), fillText );
 			} )
 			.ToArray();
 
@@ -326,7 +346,8 @@ public static class ChatCommandSystem
 			if ( !MatchesQuery( command.Names, query ) )
 				continue;
 
-			previews.Add( new ChatCommandPreview( command.Usage, command.Description, GetAccessText( command ) ) );
+			previews.Add( new ChatCommandPreview( command.Usage, command.Description, GetAccessText( command ),
+				fillText: $"/{command.Name} " ) );
 		}
 
 		return previews
@@ -1127,6 +1148,83 @@ public static class ChatCommandSystem
 		if ( motivation.Length > 1000 ) motivation = motivation[..1000];
 
 		_ = HandleWhitelistApplyAsync( context, def, motivation );
+	}
+
+	// ════════════════════════════════════════════════════════════════════
+	//  BAN JOB
+	// ════════════════════════════════════════════════════════════════════
+
+	/// <summary>/banjob &lt;joueur&gt; &lt;raison&gt; — bannit le joueur de son job actuel.</summary>
+	static void BanJobCommand( ChatCommandContext context )
+	{
+		_ = BanJobAsync( context );
+	}
+
+	static async Task BanJobAsync( ChatCommandContext context )
+	{
+		if ( !TryReadPlayerAndRest( context, out var target, out var reason ) ) return;
+
+		if ( string.IsNullOrWhiteSpace( reason ) || reason.Length < 3 )
+		{
+			context.Reply( "Usage : /banjob <joueur> <raison>", "!" );
+			return;
+		}
+
+		var jobCode  = target.JobDefinitionPath;
+		var jobTitle = target.CurrentJobDefinition?.Title ?? jobCode;
+
+		if ( string.IsNullOrWhiteSpace( jobCode )
+		     || string.Equals( jobCode, JobDefinition.DefaultResourcePath, StringComparison.OrdinalIgnoreCase ) )
+		{
+			context.Reply( $"{target.DisplayName} est sur le job par défaut — impossible de le bannir.", "!" );
+			return;
+		}
+
+		var adminSid  = (long)context.Connection.SteamId.Value;
+		var adminName = context.Player?.DisplayName ?? context.Connection.DisplayName;
+		var targetSid = (long)target.SteamId;
+
+		// Persistance BDD via darkapi
+		var ok = await DarkHttpClient.PostAsync( "job-bans", new
+		{
+			steamid           = targetSid,
+			steam_name        = target.DisplayName,
+			job_code          = jobCode,
+			reason,
+			banned_by_steamid = adminSid,
+			banned_by_name    = adminName,
+		} );
+
+		if ( !ok )
+		{
+			context.Reply( "Erreur lors de l'enregistrement en BDD (API).", "!" );
+			return;
+		}
+
+		// Forcer le changement de job si le joueur est encore dessus
+		if ( target.IsValid()
+		     && string.Equals( target.JobDefinitionPath, jobCode, StringComparison.OrdinalIgnoreCase ) )
+		{
+			var defaultDef = JobDefinition.GetDefault();
+			if ( defaultDef is not null )
+			{
+				target.SetJobDefinition( defaultDef );
+				_ = target.ApplyCurrentJobAfterSpawnAsync();
+			}
+
+			if ( target.Network.Owner is not null )
+			{
+				Notices.SendNotice( target.Network.Owner, "block", Color.Red,
+					$"Tu as été banni du job {jobTitle}.\nRaison : {reason}", 7f );
+			}
+		}
+
+		_ = DarkHttpClient.LogAdminActionAsync(
+			adminSid, adminName, targetSid, target.DisplayName,
+			"job.ban", $"Banni de '{jobTitle}' — {reason}" );
+
+		Notices.SendNotice( context.Connection, "block", Color.Green,
+			$"{target.DisplayName} banni du job {jobTitle}.", 3f );
 	}
 
 	static async Task HandleWhitelistApplyAsync( ChatCommandContext context, JobDefinition def, string motivation )

@@ -27,7 +27,7 @@
             <div class="command_preview">
                 @foreach (var suggestion in Suggestions)
                 {
-                    <div class="command_suggestion">
+                    <div class="command_suggestion" @onclick="@(() => FillCommand(suggestion.FillText))">
                         <div class="command_usage">@suggestion.Usage</div>
                         <div class="command_description">@suggestion.Description</div>
                         @if (!string.IsNullOrWhiteSpace(suggestion.AccessText))
@@ -94,6 +94,14 @@
         }
 
         AddText( text );
+    }
+
+    void FillCommand( string text )
+    {
+        if ( InputBox is null || string.IsNullOrWhiteSpace( text ) ) return;
+        InputBox.Text = text;
+        InputBox.Focus();
+        StateHasChanged();
     }
 
     void UpdateCommandSuggestions()
