@@ -974,7 +974,7 @@
         };
     }
 
-    void OpenDiscord() => App.BrowseTo( "https://discord.gg/4w7ZnGbfFy" );
+    void OpenDiscord() => Sandbox.UI.Clipboard.SetText( "https://discord.gg/4w7ZnGbfFy" );
 
     string FormatCurrency( int amount ) => $"${amount:n0}";
 
