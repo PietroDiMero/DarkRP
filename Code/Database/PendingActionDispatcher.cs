@@ -59,6 +59,7 @@ public static class PendingActionDispatcher
 				"heal"            => await HandleHealAsync( action ),
 				"revive"          => await HandleReviveAsync( action ),
 				"staff_message"   => await HandleStaffMessageAsync( action ),
+				"job_ban"         => await HandleJobBanAsync( action ),
 				_                 => HandleUnknown( action ),
 			};
 
@@ -779,6 +780,54 @@ public static class PendingActionDispatcher
 		var chat = Game.ActiveScene?.GetAllComponents<Chat>().FirstOrDefault();
 		chat?.AddSystemTextTo( conn, $"[STAFF] {adminName} : {body}", "🛡️" );
 
+		return true;
+	}
+
+	// ═════════════════════════════════════════════════════════════ JOB BAN
+	// Payload : { job_code (ResourcePath), reason, admin_name }
+	// Si le joueur est connecté ET qu'il a ce job → forcé en citoyen + notice.
+	// Si hors ligne → rien (le ban est déjà en BDD, CheckBanThenApplyAsync le bloquera au prochain SetJob).
+	private static async Task<bool> HandleJobBanAsync( PendingAction a )
+	{
+		var jobCode   = a.GetPayloadString( "job_code" ) ?? "";
+		var reason    = a.GetPayloadString( "reason" )   ?? "Ban de job par admin";
+		var player    = FindPlayer( a.TargetSteamId );
+
+		if ( player is null )
+		{
+			Log.Info( $"[JobBan] Joueur {a.TargetSteamId} hors ligne. Ban déjà persisté en BDD." );
+			return true;
+		}
+
+		// Joueur connecté et sur le job banni → forcer le job citoyen
+		if ( string.Equals( player.JobDefinitionPath, jobCode, System.StringComparison.OrdinalIgnoreCase ) )
+		{
+			var currentTitle = player.CurrentJobDefinition?.Title ?? jobCode;
+			var defaultDef   = JobDefinition.GetDefault();
+
+			if ( defaultDef is not null )
+			{
+				player.SetJobDefinition( defaultDef );
+				await player.ApplyCurrentJobAfterSpawnAsync();
+			}
+
+			if ( player.Network.Owner is not null )
+			{
+				Notices.SendNotice( player.Network.Owner, "block", Color.Red,
+					$"Tu as été banni du job {currentTitle}.\nRaison : {reason}", 7 );
+			}
+
+			Log.Info( $"[JobBan] {a.TargetSteamId} forcé hors de '{jobCode}' → {defaultDef?.Title ?? "default"}." );
+		}
+		else
+		{
+			// Le joueur n'a pas ce job actuellement → juste loguer
+			Log.Info( $"[JobBan] {a.TargetSteamId} n'a pas le job '{jobCode}' actuellement, pas de changement forcé." );
+		}
+
+		await DarkHttpClient.LogAdminActionAsync( a.CreatedBy, a.GetPayloadString( "admin_name" ),
+			a.TargetSteamId, player.GameObject.Name, "job_ban",
+			$"Banni de '{jobCode}' — {reason}" );
 		return true;
 	}
 
