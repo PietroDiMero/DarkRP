@@ -83,7 +83,7 @@ public static class DarkHttpClient
 		}
 		catch ( Exception ex )
 		{
-			Log.Warning( ex, $"[DarkHttpClient] GET {path} echoue." );
+			Log.Warning( $"[DarkHttpClient] GET {path} echoue. ({ex.GetType().Name}: {ex.Message})" );
 			return null;
 		}
 	}
@@ -125,7 +125,7 @@ public static class DarkHttpClient
 		}
 		catch ( Exception ex )
 		{
-			Log.Warning( ex, $"[DarkHttpClient] POST {path} echoue." );
+			Log.Warning( $"[DarkHttpClient] POST {path} echoue. ({ex.GetType().Name}: {ex.Message})" );
 			return false;
 		}
 	}
