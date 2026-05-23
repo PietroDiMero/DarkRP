@@ -1,4 +1,3 @@
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Linq;
 using System.Threading.Tasks;
@@ -32,9 +31,9 @@ public sealed class NpcVendorConfigRow
 	[JsonPropertyName( "id" )]   public int    Id   { get; set; }
 	[JsonPropertyName( "name" )] public string Name { get; set; } = "";
 	[JsonPropertyName( "type" )] public string Type { get; set; } = "printer";
-	[JsonPropertyName( "is_active" )]                   public int IsActive                 { get; set; }
-	[JsonPropertyName( "rotation_mode" )]               public string RotationMode          { get; set; } = "reboot";
-	[JsonPropertyName( "rotation_interval_minutes" )]   public int RotationIntervalMinutes  { get; set; } = 120;
+	[JsonPropertyName( "is_active" )]                   public int    IsActive               { get; set; }
+	[JsonPropertyName( "rotation_mode" )]               public string RotationMode           { get; set; } = "reboot";
+	[JsonPropertyName( "rotation_interval_minutes" )]   public int    RotationIntervalMinutes { get; set; } = 120;
 }
 
 /// <summary>
@@ -54,16 +53,9 @@ public sealed class NpcVendorManager : GameObjectSystem<NpcVendorManager>
 
 	public NpcVendorManager( Scene scene ) : base( scene )
 	{
-		Listen( Stage.StartupBeforeNet, 1, OnServerStartup, "NpcVendorManager.Startup" );
-		Listen( Stage.UpdateWithObject, 1000, OnUpdate, "NpcVendorManager.Update" );
-	}
-
-	// ── Démarrage ─────────────────────────────────────────────────────────
-
-	async void OnServerStartup()
-	{
+		Listen( Stage.StartUpdate, 1000, OnUpdate, "NpcVendorManager.Update" );
 		if ( !Networking.IsHost ) return;
-		await SpawnAllVendorsAsync( isReboot: true );
+		_ = SpawnAllVendorsAsync( isReboot: true );
 	}
 
 	// ── Update (vérifie rotation timer toutes les 60s) ────────────────────
@@ -82,16 +74,10 @@ public sealed class NpcVendorManager : GameObjectSystem<NpcVendorManager>
 	/// <summary>Spawn ou repositionne tous les vendors actifs.</summary>
 	public static async Task SpawnAllVendorsAsync( bool isReboot = false )
 	{
-		NpcVendorConfigRow[] configs;
-		try
+		var configs = await DarkHttpClient.GetAsync<NpcVendorConfigRow[]>( "npc-vendors" );
+		if ( configs is null )
 		{
-			var json = await DarkHttpClient.GetStringAsync( "npc-vendors" );
-			configs = JsonSerializer.Deserialize<NpcVendorConfigRow[]>( json )
-			          ?? System.Array.Empty<NpcVendorConfigRow>();
-		}
-		catch ( System.Exception ex )
-		{
-			Log.Warning( $"[NpcVendorManager] Impossible de lire la liste des vendors : {ex.Message}" );
+			Log.Warning( "[NpcVendorManager] Impossible de lire la liste des vendors." );
 			return;
 		}
 
@@ -105,14 +91,8 @@ public sealed class NpcVendorManager : GameObjectSystem<NpcVendorManager>
 	/// <summary>Re-fetch et repositionne les vendors en mode timer si besoin.</summary>
 	static async Task RefreshTimerVendorsAsync()
 	{
-		NpcVendorConfigRow[] configs;
-		try
-		{
-			var json = await DarkHttpClient.GetStringAsync( "npc-vendors" );
-			configs = JsonSerializer.Deserialize<NpcVendorConfigRow[]>( json )
-			          ?? System.Array.Empty<NpcVendorConfigRow>();
-		}
-		catch { return; }
+		var configs = await DarkHttpClient.GetAsync<NpcVendorConfigRow[]>( "npc-vendors" );
+		if ( configs is null ) return;
 
 		foreach ( var cfg in configs.Where( c => c.IsActive == 1 && c.RotationMode == "timer" ) )
 		{
@@ -124,17 +104,11 @@ public sealed class NpcVendorManager : GameObjectSystem<NpcVendorManager>
 	static async Task SpawnVendorAsync( NpcVendorConfigRow cfg, bool isReboot )
 	{
 		var triggerParam = isReboot && cfg.RotationMode == "reboot" ? "?trigger=reboot" : "";
-		NpcVendorActiveResponse resp;
+		var resp = await DarkHttpClient.GetAsync<NpcVendorActiveResponse>( $"npc-vendors/{cfg.Id}/position{triggerParam}" );
 
-		try
+		if ( resp?.Position is null )
 		{
-			var json = await DarkHttpClient.GetStringAsync( $"npc-vendors/{cfg.Id}/position{triggerParam}" );
-			resp = JsonSerializer.Deserialize<NpcVendorActiveResponse>( json );
-			if ( resp?.Position is null ) return;
-		}
-		catch ( System.Exception ex )
-		{
-			Log.Warning( $"[NpcVendorManager] Pas de position pour vendor {cfg.Id} : {ex.Message}" );
+			Log.Warning( $"[NpcVendorManager] Pas de position pour vendor {cfg.Id}." );
 			return;
 		}
 
@@ -144,17 +118,17 @@ public sealed class NpcVendorManager : GameObjectSystem<NpcVendorManager>
 	/// <summary>Crée ou déplace le GameObject NPC pour ce vendor.</summary>
 	static void PlaceNpc( int vendorId, string vendorName, NpcVendorPositionData pos )
 	{
-		var scene    = Game.ActiveScene;
+		var scene = Game.ActiveScene;
 		if ( scene is null ) return;
 
-		var objName  = $"{NpcObjectName}_{vendorId}";
+		var objName = $"{NpcObjectName}_{vendorId}";
 
 		// Supprime l'ancien NPC s'il existe
 		var existing = scene.GetAllObjects( false ).FirstOrDefault( o => o.Name == objName );
 		existing?.Destroy();
 
 		var go = scene.CreateObject();
-		go.Name      = objName;
+		go.Name          = objName;
 		go.WorldPosition = new Vector3( pos.PosX, pos.PosY, pos.PosZ );
 		go.WorldRotation = Rotation.FromYaw( pos.AngleYaw );
 		go.NetworkSpawn();

@@ -19,12 +19,6 @@ public sealed class JailCellManager : GameObjectSystem<JailCellManager>
 	public JailCellManager( Scene scene ) : base( scene )
 	{
 		if ( !Networking.IsHost ) return;
-
-		Listen( Stage.StartupBeforeNet, 1, OnServerStartup, "JailCellManager.Startup" );
-	}
-
-	void OnServerStartup()
-	{
 		_ = LoadCellsAsync();
 	}
 
