@@ -38,8 +38,17 @@ public sealed partial class DarkDatabase : GameObjectSystem<DarkDatabase>, Compo
 	{
 		Log.Info( "[DarkDatabase] Connexion au sidecar PHP MySQL..." );
 
-		// Test de connectivité
-		if ( !await DarkHttpClient.PingAsync() )
+		// Test de connectivité avec retry (l'API peut mettre quelques secondes à répondre au démarrage)
+		bool apiOk = false;
+		for ( int attempt = 1; attempt <= 5; attempt++ )
+		{
+			apiOk = await DarkHttpClient.PingAsync();
+			if ( apiOk ) break;
+			Log.Warning( $"[DarkDatabase] Ping échoué (tentative {attempt}/5), retry dans 2s..." );
+			await Task.Delay( 2000 );
+		}
+
+		if ( !apiOk )
 		{
 			Log.Error( $"[DarkDatabase] ❌ Sidecar API inaccessible sur {DarkHttpClient.BaseUrl}" );
 			Log.Error( "[DarkDatabase]    → Vérifiez que l'API Hostinger est accessible" );
